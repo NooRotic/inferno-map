@@ -569,7 +569,6 @@ function init(data, spriteSpec) {
   buildEdges();
   buildParticles();
   buildTableaux(D.tableaux);
-  if (/[?&]debug/.test(location.search)) setInterval(() => { document.documentElement.dataset.inf = JSON.stringify(tableaux.map((b) => { const m = new THREE.Matrix4(), v = new THREE.Vector3(); b.inst.getMatrixAt(0, m); v.setFromMatrixPosition(m); const sc = toScreen(v); return { id: b.T.id, n: b.count, op: +b.inst.material.opacity.toFixed(2), tr: b.inst.material.transparent, pos: v.toArray().map((x) => +x.toFixed(1)), scr: sc && [Math.round(sc.x), Math.round(sc.y)], rep: b.inst.material.map.repeat.toArray().map((x) => +x.toFixed(4)), off: b.inst.material.map.offset.toArray().map((x) => +x.toFixed(4)), sp: b.sparks ? b.sparks.pts.visible : null, on: (() => { for (let i = 0; i < b.count; i++) { if (!b.vis[i]) continue; v.set(b.pos[i * 3], b.pos[i * 3 + 1], b.pos[i * 3 + 2]); const q = toScreen(v); if (q && q.x > 0 && q.x < innerWidth && q.y > 0 && q.y < innerHeight) return [Math.round(q.x), Math.round(q.y)]; } return null; })(), y0: +b.y0.toFixed(1), rad: +b.fixedRad.toFixed(1), ring: [b.L.ri, b.L.ro, b.L.y] }; })); }, 500);   // dev only: ?debug mirrors tableau state into a data attribute
   buildUI();
   setCanto(S.canto, true);
   resetView(true);
@@ -1487,7 +1486,7 @@ function renderStrip() {
   }
   el.classList.add('on');
 }
-function clickAt(x, y) { if (/[?&]debug/.test(location.search)) { const h = sceneHit(x, y); document.documentElement.dataset.click = JSON.stringify([Math.round(x), Math.round(y), !!pick(x, y), h ? h.T.id : null]); } const n = pick(x, y); if (n) { selectNode(n); return; } const t = sceneTarget(x, y); if (t) { if (t.n) selectNode(t.n); else selectLevel(t.L); } }
+function clickAt(x, y) { const n = pick(x, y); if (n) { selectNode(n); return; } const t = sceneTarget(x, y); if (t) { if (t.n) selectNode(t.n); else selectLevel(t.L); } }
 const labelPool = new Map();
 function label(key, text, cls) {
   let el = labelPool.get(key);
@@ -1542,15 +1541,15 @@ function updateLabels() {
 /* ======================= playback ======================= */
 function toggleIcons() { S.icons = !S.icons; markerMat.uniforms.uIcons.value = S.icons ? 1 : 0; $('#btnIcons').setAttribute('aria-pressed', S.icons); }
 function togglePlay() { S.playing ? stopPlay() : startPlay(); }
-/* cantos per second while playing the journey; slower on touch widths, where the scenes are being watched up close (about 6 minutes end to end) */
-const playRate = () => (innerWidth <= 900 ? 0.1 : 0.3);
+/* cantos per second while playing the journey: about 6 minutes end to end, slow enough to watch each circle's scenes */
+const PLAY_RATE = 0.1;
 function startPlay() { if (S.canto >= 34.99) setCanto(1); S.playing = true; S.follow = true; if (S.fly) toggleFly(); $('#btnPlay').setAttribute('aria-pressed', 'true'); $('#playLbl').textContent = '❚❚ Pause'; }
 function stopPlay() { S.playing = false; S.follow = false; $('#btnPlay').setAttribute('aria-pressed', 'false'); $('#playLbl').textContent = '▶ Play the journey'; }
 
 /* ======================= loop ======================= */
 function loop() {
   const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
-  if (S.playing) { setCanto(S.canto + dt * playRate()); if (S.canto >= 35) stopPlay(); }
+  if (S.playing) { setCanto(S.canto + dt * PLAY_RATE); if (S.canto >= 35) stopPlay(); }
   updateCamera(dt); syncGauge(); updateFade(dt);
   if (S.motion) { tickParticles(dt); tickTableaux(t); wings.forEach((w, i) => (w.rotation.x = Math.sin(t * 1.6 + i) * 0.35)); pilgrim.rotation.y = t * 1.2; }
   markerMat.uniforms.uTime.value = t;
