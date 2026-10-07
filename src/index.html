@@ -269,6 +269,7 @@ button { font: inherit; color: inherit; }
   .ctrlrow { gap: 6px; }
   .ctrlrow .btn { padding: 8px 9px; font-size: 11px; letter-spacing: .06em; min-height: 36px; }
   .ctrlrow .spacer { display: none; }
+  #btnFly { display: none; }   /* fly mode needs a keyboard */
   .readout { order: 9; margin-left: auto; }
   .tick:not(.ms) { pointer-events: none; }
   .tick.ms { padding: 4px 9px; }
@@ -1106,7 +1107,7 @@ function buildTicks() {
     const tip = `Canto ${r}${L ? ' · ' + (L.la || L.name) : ''}`;
     return `<button class="tick${ms.has(n) ? ' ms' : ''}" data-c="${n}" style="left:${((n - 1) / 34) * 100}%" title="${esc(tip)}" aria-label="${esc(tip)}"><i></i><span class="num">${r}</span></button>`;
   }).join('');
-  $('#ticks').addEventListener('click', (e) => { const b = e.target.closest('.tick'); if (b) { stopPlay(); setCanto(+b.dataset.c); } });
+  $('#ticks').addEventListener('click', (e) => { const b = e.target.closest('.tick'); if (b) { stopPlay(); setCanto(+b.dataset.c); if (innerWidth <= 900 && !S.fly) S.follow = true; } });
   layoutTicks();
   addEventListener('resize', layoutTicks);
   // the footer's height changes with width (hints wrap), and things stacked above it follow via --foot
@@ -1158,7 +1159,7 @@ function buildUI() {
   buildGauge();
   document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
   buildTicks();
-  $('#canto').addEventListener('input', (e) => { stopPlay(); setCanto(parseFloat(e.target.value), 'input'); });
+  $('#canto').addEventListener('input', (e) => { stopPlay(); setCanto(parseFloat(e.target.value), 'input'); if (innerWidth <= 900 && !S.fly) S.follow = true; });   // on touch widths, scrubbing carries the camera along like Play does
   $('#btnPlay').addEventListener('click', togglePlay);
   $('#btnFly').addEventListener('click', toggleFly);
   $('#btnReset').addEventListener('click', () => resetView());
