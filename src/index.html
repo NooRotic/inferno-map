@@ -255,7 +255,7 @@ button { font: inherit; color: inherit; }
 
   <div id="gauge" class="gauge" role="group" aria-label="Camera depth">
     <div class="gauge-bands" id="gaugeBands"></div>
-    <input type="range" id="depth" min="-125" max="8" step="0.1" value="-78" aria-label="Camera depth: drag to move the view down the funnel">
+    <input type="range" id="depth" min="0" max="1000" step="1" value="800" aria-label="Camera depth: drag to move the view down the funnel to the stars">
     <output id="depthLbl" class="depth-lbl"></output>
   </div>
 
@@ -1061,30 +1061,35 @@ function layoutTicks() {
   ticks.forEach((t) => t.classList.toggle('nonum', !keep.has(t)));
 }
 /* depth gauge: bands from the levels' floor heights; the slider moves the camera's focus up and down the funnel axis */
-const GAUGE = { top: 8, bottom: -125, drag: false };
-function levelAtY(y) { let hit = LEVELS[0]; LEVELS.forEach((L) => { if (L.kind !== 'tunnel' && L.y >= y - 1e-6) hit = L; }); return hit; }
+/* The bar runs from the surface (top), through Hell, to the stars at the end of the hidden way (bottom). Hell is depth-proportional over the
+   upper GAUGE.split of the bar; the long climb out is compressed into the rest so it doesn't swamp the circles. */
+const GAUGE = { top: 8, hell: -132, bottom: -340, split: 0.86, drag: false };
+const yToF = (y) => Math.max(0, Math.min(1, y >= GAUGE.hell ? ((GAUGE.top - y) / (GAUGE.top - GAUGE.hell)) * GAUGE.split : GAUGE.split + ((GAUGE.hell - y) / (GAUGE.hell - GAUGE.bottom)) * (1 - GAUGE.split)));
+const fToY = (f) => (f <= GAUGE.split ? GAUGE.top - (f / GAUGE.split) * (GAUGE.top - GAUGE.hell) : GAUGE.hell - ((f - GAUGE.split) / (1 - GAUGE.split)) * (GAUGE.hell - GAUGE.bottom));
+const gaugeY = () => fToY(1 - +$('#depth').value / 1000);   // the slider's top end is its max, so value = (1 - f) * 1000
+function levelAtY(y) { let hit = LEVELS[0]; LEVELS.forEach((L) => { if (L.y >= y - 1e-6) hit = L; }); return hit; }
 function buildGauge() {
-  const span = GAUGE.top - GAUGE.bottom, segs = LEVELS.filter((L) => L.kind !== 'tunnel');
-  $('#gaugeBands').innerHTML = segs.map((L, i) => {
-    const y0 = Math.min(GAUGE.top, L.y), y1 = segs[i + 1] ? segs[i + 1].y : GAUGE.bottom;
-    return `<i style="top:${((GAUGE.top - y0) / span) * 100}%;height:${((y0 - y1) / span) * 100 + 0.2}%;--c:${bandCss(L)}"></i>`;
+  $('#gaugeBands').innerHTML = LEVELS.map((L, i) => {
+    const f0 = yToF(Math.min(GAUGE.top, L.y)), f1 = LEVELS[i + 1] ? yToF(LEVELS[i + 1].y) : 1;
+    return `<i style="top:${f0 * 100}%;height:${(f1 - f0) * 100 + 0.2}%;--c:${bandCss(L)}"></i>`;
   }).join('');
   const g = $('#gauge'), r = $('#depth');
-  r.addEventListener('input', () => { S.follow = false; cam.g.target.y = +r.value; labelGauge(); });
+  r.addEventListener('input', () => { S.follow = false; cam.g.target.y = gaugeY(); labelGauge(); });
   r.addEventListener('pointerdown', () => { GAUGE.drag = true; g.classList.add('drag'); labelGauge(); });
   const up = () => { GAUGE.drag = false; g.classList.remove('drag'); };
   addEventListener('pointerup', up); addEventListener('pointercancel', up);
 }
 function labelGauge() {
-  const r = $('#depth'), y = +r.value, L = levelAtY(y), H = $('#gauge').clientHeight, f = (y - GAUGE.bottom) / (GAUGE.top - GAUGE.bottom);
-  const o = $('#depthLbl'); o.textContent = L.la || L.name; o.style.top = 9 + (1 - f) * (H - 18) + 'px';
-  r.setAttribute('aria-valuetext', `${L.name}, about ${Math.round(-y)} units below the surface`);
+  const r = $('#depth'), y = gaugeY(), L = levelAtY(y), H = $('#gauge').clientHeight, f = 1 - +r.value / 1000;
+  const name = y <= GAUGE.bottom + 20 ? 'Le stelle · the stars' : (L.la || L.name);
+  const o = $('#depthLbl'); o.textContent = name; o.style.top = 9 + f * (H - 18) + 'px';
+  r.setAttribute('aria-valuetext', y <= GAUGE.bottom + 20 ? 'The stars, at the end of the hidden way' : `${L.name}, about ${Math.round(Math.max(0, -y))} units below the surface`);
 }
 /* called every frame: follow the camera when the gauge isn't being dragged */
 function syncGauge() {
   if (GAUGE.drag) return;
-  const r = $('#depth'), y = Math.max(GAUGE.bottom, Math.min(GAUGE.top, cam.target.y));
-  if (Math.abs(+r.value - y) > 0.05) { r.value = y; labelGauge(); }
+  const r = $('#depth'), v = (1 - yToF(cam.target.y)) * 1000;
+  if (Math.abs(+r.value - v) > 0.5) { r.value = v; labelGauge(); }
 }
 function buildUI() {
   buildGauge();
