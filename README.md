@@ -1,95 +1,94 @@
-# INFERNVS — a cutaway map of Dante's Hell
+# INFERNVS
 
-A 3D, museum-style cutaway of the Earth showing Hell as Dante builds it in the *Inferno*: a funnel under Jerusalem narrowing to Lucifer at the planet's center, with a hidden tunnel up to Mount Purgatory on the far side. Every soul, guardian, place and event is a data point cited by canto and line.
+**Dante's *Inferno* as a data visualization.** Every soul, guardian, place and event in the poem is a data point with a canto-and-line citation, placed in a 3D cutaway of the Earth and linked to the others.
 
-- Live: _deployment pending_
-- Stack: plain HTML + vanilla JS + Three.js r128. No framework, no bundler, no runtime dependencies beyond Three.js and Google Fonts.
+**Live:** [inferno.pollardjr.com](https://inferno.pollardjr.com) · plain HTML, vanilla JS and Three.js · no framework, no bundler, no backend
 
-## Repo layout
+![INFERNVS: the cutaway at the end of the descent](docs/img/hero.png)
 
-```
-src/
-  index.html      The app: CSS + markup + two <script> blocks (sprite engine, map engine). "Artifact form": no <html>/<head>.
-  inferno.json    The data: levels, journey path, 130 points, 37 links.
-  sprites.json    The pixel art: palette, person generator parts, templates, 110 sprites.
-tools/build.mjs   Wraps src/index.html into a standalone page in dist/ (adds doctype/head). Optional --vendor.
-vendor/three-r128 Three.js r128 (MIT) for self-hosting without a CDN.
-docs/RESEARCH.md  Sources, modelling decisions, and the citation verification log.
-docs/ROADMAP.md   Future work: animated "torment tableaux" and rollover cards.
-```
+## The idea
+
+The *Inferno* is already a structured dataset. Dante gives the geometry (a cone driven into the Earth beneath Jerusalem, narrowing to the planet's center), the ordering (circles, ledges, pits, in a fixed sequence), the cast (who, where, why) and the references between them (who points to whom, who caused whom). It is built as a system, and it can be read like one.
+
+This project takes that structure literally:
+
+- **A cutaway of the globe.** The funnel is modelled from Dante's own description: the descent turns left, bridges break at the sixth pit, and the lowest circle is ice, not fire.
+- **Every point is cited.** 130 points, each tied to a canto and line range, such as `X.22-51`. The first Roman numeral also decides when the point appears on the journey.
+- **Text versus interpretation is marked.** A tag on each card says whether something is *stated in the text* or *interpretive*, so Dante's claims are never mixed up with commentary.
+- **Links are data too.** 37 typed relationships (betrayal, cause and effect, prophecy, echoes across the poem) connect points, drawn on the map and listed on each card.
+- **Quotes are public domain.** The Italian is the standard text and the English is H. W. Longfellow (1867). Quotes are checked against published sources, and the log in [`docs/RESEARCH.md`](docs/RESEARCH.md) lists exactly what has been verified and what is still to confirm.
+
+| Count | |
+|---|---|
+| Points | 130 (69 souls, 21 guardians, 27 places, 12 events, 1 absence) |
+| Links | 37 typed relationships |
+| Levels | 29 (circles, ledges and pits, from the dark wood to the center) |
+| Journey | 78 waypoints through cantos I-XXXIV |
+| Icons | 110 original 16×16 sprites |
+
+## Taking the tour
+
+Press **Play the journey** (or the space bar) to follow Dante and Virgil down canto by canto. Rings they have passed light up, the ones ahead stay in shadow, and the counters at top right track how many souls, guardians, places and events you have met.
+
+Or go where you like: drag to turn the globe, scroll to zoom, click any icon to fly to it. The card that opens shows the citation, the Italian line with the Longfellow translation, and its connections.
+
+![A soul card: Farinata degli Uberti, Canto X](docs/img/soul-farinata.png)
+
+![Lucifer at the center of the Earth, Canto XXXIV](docs/img/lucifer.png)
+
+## The codex
+
+The five tabs at the top are the reference layer, named in Latin to match the tone of the poem.
+
+| Tab | What it is |
+|---|---|
+| **MAPPA** | The 3D map itself, with the journey slider along the bottom |
+| **INDEX** | Every point in the order Dante meets it. Searchable by name, note or canto |
+| **CIRCULI** | The circles from the rim to the center, with a *passed / ahead* state for each |
+| **CLAVIS** | The key to the map: ring colors, link types and the *stated vs interpretive* tags |
+| **PROOEMIUM** | The introduction: how Dante builds Hell, and where the proportions come from (the poem gives few measurements, so scale follows Renaissance reconstructions) |
+
+![The INDEX tab searching for "Brutus"](docs/img/index.png)
+
+![The CLAVIS tab, the legend for ring colors and link types](docs/img/clavis.png)
+
+## The icons
+
+Each point has a 16×16 pixel icon. The sprites are not drawn one by one: [`src/sprites.json`](src/sprites.json) holds a palette, a base figure and a set of modifiers (crown, tiara, hood, wings, flames, tomb, tar, frozen and so on), and the sprite engine stacks them into 110 icons, adds a 1px outline and packs everything into one texture atlas. Icons are colour-ringed by kind: soul, guardian, place or event. Press `I` to switch between icons and plain dots.
+
+![All 110 sprites](docs/img/sprites.png)
+
+## Controls
+
+| Key | Action |
+|---|---|
+| `Space` | Play or pause the journey |
+| Drag / right-drag / scroll | Turn the globe / pan / zoom |
+| `F` | Look closer at the selected point |
+| `G` | Fly mode (WASD, Q and E) |
+| `I` | Toggle icons and dots |
+| `R` | Back to the whole Earth |
+| `Esc` | Clear the selection |
 
 ## Run it locally
 
-The page `fetch()`es its two JSON files, so it must be served over HTTP (opening the file directly with `file://` fails).
+The page `fetch()`es its JSON, so it has to be served over HTTP (`file://` will not work).
 
 ```bash
 npm run dev            # builds dist/ and serves it at http://localhost:5173
-# or, with nothing installed but Python:
-node tools/build.mjs && cd dist && python3 -m http.server 5173
 ```
 
-`npm run build` keeps Three.js on cdnjs (identical to the artifact). `npm run build:vendor` copies Three.js into `dist/vendor/` so the site has no third-party script host.
+`npm run build` keeps Three.js on cdnjs. `npm run build:vendor` copies it into `dist/vendor/` so the only third-party request left is Google Fonts. There are no dependencies to install.
 
-## Deploy to your own static host
+## Deployment
 
-`dist/` is the whole site: `index.html`, `inferno.json`, `sprites.json` (+ `vendor/three.min.js` if vendored). All paths are relative, so it works at a domain root or in a subfolder (e.g. `https://inferno.example.com/` or `https://example.com/inferno/`).
+`dist/` is the whole site: `index.html`, `inferno.json`, `sprites.json` and `vendor/three.min.js`. All paths are relative, so it works at a domain root or in a subfolder. A [GitHub Actions workflow](.github/workflows/deploy.yml) builds it with `build:vendor` and publishes to GitHub Pages on every push to `main`.
 
-```bash
-npm run build:vendor
-rsync -avz --delete dist/ user@yourhost:/var/www/inferno/     # or SFTP/FTP the dist/ folder
-```
+## Under the hood
 
-Host checklist:
-- Serve `.json` as `application/json` (default on nginx/Apache/Caddy).
-- Turn on gzip/brotli: the JSON and HTML compress ~5–8×.
-- HTTPS recommended (Google Fonts and cdnjs are HTTPS; mixed content blocks them on an HTTP page).
-- Caching: long cache for `vendor/`, short or revalidate for `index.html` and the JSON so data edits show up.
-- No server code, database, or CORS setup needed: everything is same-origin static files.
-
-## How the code is organized (src/index.html)
-
-1. **CSS tokens** (`:root`): vellum, ink, rubric red, gold, lapis; Cinzel + EB Garamond. Single dark "lamplit" theme by design.
-2. **Sprite engine** (`buildPix(spec)`): turns `sprites.json` into one texture atlas (canvas), with automatic centering and a 1px outline. Exposes `index`, `resolve(name, kind)` and `url(name)` (data-URL for HTML icons).
-3. **Map engine** (one IIFE):
-   - `buildEarth()`: the globe as a 300° lathe (60° wedge cut away at 140°–200°), two strata-textured section faces traced from the funnel profile, the tunnel carved into the 200° face, Purgatory at the antipode.
-   - `buildLevels()`: each level is a lathe ring (floor) + cliff wall, with its own material so it can be tinted and faded.
-   - `buildLandmarks()`: hill, Dark Wood, gate, castle, Dis walls and towers, tombs, landslide, bridges (broken over bolgia 6), giants, Lucifer.
-   - `buildPath()`: CatmullRom curve through the journey waypoints (Geryon's spiral is generated), drawn as a tube whose shader colors the traveled part.
-   - `buildMarkers()`: one `THREE.Points` draw call for all 130 points; the fragment shader samples the sprite atlas and draws the colored ring. `I` toggles icons/dots.
-   - Procedural textures (`TEX_RECIPES`): fractal value-noise recipes for stone, water, mud, blood, sand, iron, ice, strata, ocean.
-   - State: `setCanto()` drives everything journey-related (passed / current / ahead tinting, counters, itinerary).
-   - Selection: `selectNode()` / `selectLevel()` set `S.fadeLv`; `updateFade()` eases every other level and the Earth toward transparency.
-   - Camera: custom orbit + fly controls; `frameNode()` stands on the funnel axis looking out, so it never ends up outside the walls.
-
-## Data model (src/inferno.json)
-
-Coordinates are polar around the funnel axis:
-
-| field | meaning |
-|---|---|
-| `lv` | level id the point sits on |
-| `a` | angle in degrees. The descent turns left, which is decreasing `a`. Keep points out of the cut wedge (140–200). |
-| `r` | 0 = outer edge of the level's ring, 1 = inner edge |
-| `h` | height above the floor (giants, Lucifer's mouths) |
-| `y`, `rad` | absolute height / radius overrides (Earth's center, tunnel) |
-
-**Add a point**: copy any entry in `nodes`, give it a unique `id`, a `lv`, `a`, `r`, a `cite` (first Roman numeral = the canto it unlocks on the journey), a `k` kind (`soul`, `guardian`, `place`, `event`, `absent`), an `icon` from sprites.json, `note`, optional `it`/`en` quote and `conf` (`text` or `interp`). **Remove a point**: delete it; links pointing at it are skipped with a console warning.
-
-**Links** (`edges`): `{ a, b, t, cite, note }` where `t` is one of `pair, betray, cause, source, fate, echo, summon, home, judge, lie`. Either end can be a point id or a level id.
-
-**Journey** (`path`): ordered waypoints with `c` = canto position (decimal, 1–35). `turn: "right"` marks the two right turns; `mode: "flight"` generates Geryon's spiral.
-
-## Sprites (src/sprites.json)
-
-16×16, one letter per pixel from `palette` (`.` = transparent). Three ways to define one:
-
-```json
-"tree":  { "grid": ["....", "..."] },
-"pope":  { "person": { "robe": "w", "shade": "g", "mods": ["tiara"] } },
-"lion":  { "template": "quad", "colors": { "F": "t" }, "stamps": [[2, ["...nnnn..."]]] }
-```
-
-Person mods stack (`crown, tiara, laurel, hood, helmet, horns, halo, wings, book, sword, frozen, flames, tomb, tar, muck, …`). `post` can be `flipFire`, `flipV`, `crossRot`, `statueBands`. Assign with a point's `icon` field; unknown names fall back to `kindDefaults`.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): how the engine is organized, the data model (coordinates are polar around the funnel axis) and how to add a point or a sprite.
+- [`docs/RESEARCH.md`](docs/RESEARCH.md): sources, modelling decisions and the citation verification log.
+- [`docs/ROADMAP.md`](docs/ROADMAP.md): planned work (animated punishments, rollover cards).
 
 ## Credits and licenses
 
