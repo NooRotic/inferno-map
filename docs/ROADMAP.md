@@ -88,4 +88,6 @@ The desktop experience (900px and up) is done and live. Phones were deliberately
 
 **How to test here:** the in-app browser's `resize_window` mobile preset (375x812) switches to a touch user agent, though clicks still arrive as mouse events. The page only draws while the pane is rendered, so take a screenshot before reading label positions.
 
-**Still open from the same review:** link preview tags (no `og:image` or Twitter card yet, and the page title still says "Inferno Tactical Map"), README screenshots that predate the bands, gauge and wider rings, and header tabs clipping at about 800px wide.
+**Link preview is done** (`src/og.png`, tags in `tools/build.mjs`). When the picture changes, bump the `?v=` on `og:image` and `twitter:image` there so platforms re-fetch it.
+
+**Still open from the same review:** README screenshots that predate the bands, gauge and wider rings, and header tabs clipping at about 800px wide.
