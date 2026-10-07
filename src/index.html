@@ -1,0 +1,1157 @@
+<title>Inferno Tactical Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap">
+<style>
+/* Layout: a museum cutaway of the Earth fills the screen; manuscript leaves (vellum panels) sit at the edges:
+   itinerary top-left, folio (detail) right, journey rule along the bottom. Deliberately one dark, lamplit look. */
+:root {
+  color-scheme: dark;
+  --bg: #110c08;
+  --vellum: #efe4cc;
+  --vellum-2: #e2d2ae;
+  --ink: #2a1d12;
+  --ink-soft: #6a543c;
+  --rubric: #a3271b;
+  --gold: #b8892a;
+  --gold-hi: #e0bb64;
+  --lapis: #2b4a8a;
+  --on-dark: #e8dcc2;
+  --on-dark-soft: #b3a281;
+  --font-display: "Cinzel", "Trajan Pro", Georgia, serif;
+  --font-body: "EB Garamond", Garamond, "Times New Roman", Georgia, serif;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+*, *::before, *::after { box-sizing: border-box; }
+body { background: var(--bg); color: var(--on-dark); font-family: var(--font-body); font-size: 16px; overflow: hidden; }
+#app { position: fixed; inset: 0; overflow: hidden; background: radial-gradient(ellipse at 50% 38%, #2c1e13 0%, #160f0a 55%, #080605 100%); }
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#gl.dragging { cursor: grabbing; }
+#gl.hovering { cursor: pointer; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+.pix { image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; flex: none; vertical-align: middle; }
+
+/* ---------- labels in 3D ---------- */
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lbl { position: absolute; left: 0; top: 0; white-space: nowrap; font-size: 14px; color: var(--on-dark); text-shadow: 0 1px 2px #000, 0 0 6px #000; will-change: transform; }
+.lbl.sel { color: var(--gold-hi); font-size: 15px; font-weight: 600; z-index: 3; }
+.lbl.ahead { color: var(--on-dark-soft); font-style: italic; }
+.lbl.level { pointer-events: auto; cursor: pointer; font-family: var(--font-display); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  background: rgba(14,10,7,.72); padding: 2px 8px 3px; border-bottom: 1px solid #6a5a44; color: var(--on-dark-soft); }
+.lbl.level .en { font-family: var(--font-body); text-transform: none; letter-spacing: 0; font-style: italic; font-size: 12.5px; margin-left: 6px; color: var(--on-dark-soft); }
+.lbl.level.passed { color: var(--on-dark); }
+.lbl.level.current { color: var(--gold-hi); border-color: var(--gold-hi); }
+.lbl.level.focus { color: #fff; border-color: #d0442f; background: rgba(110,24,14,.85); }
+.lbl.turn { font-style: italic; color: var(--gold-hi); font-size: 13px; }
+.lbl.pilgrim { font-family: var(--font-display); font-size: 11px; letter-spacing: .14em; color: var(--gold-hi); }
+
+/* ---------- vellum leaves ---------- */
+.leaf { background: var(--vellum); color: var(--ink); background-image: radial-gradient(ellipse at 30% 0%, rgba(255,255,255,.35), transparent 60%), radial-gradient(ellipse at 100% 100%, rgba(150,110,60,.18), transparent 55%);
+  box-shadow: 0 0 0 1px #c9b48a inset, 0 0 0 4px var(--vellum) inset, 0 0 0 5px var(--gold) inset, 0 10px 30px rgba(0,0,0,.55); }
+.eyebrow { font-family: var(--font-display); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--rubric); }
+.cite { font-family: var(--font-body); font-variant: small-caps; letter-spacing: .04em; color: var(--rubric); font-weight: 600; white-space: nowrap; }
+
+.topbar { position: absolute; left: 0; right: 0; top: 0; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 14px; z-index: 5;
+  display: flex; align-items: center; gap: 18px; background: linear-gradient(180deg, rgba(8,6,4,.92), rgba(8,6,4,0)); }
+.brand { font-family: var(--font-display); font-weight: 700; letter-spacing: .32em; color: var(--gold-hi); font-size: 18px; flex: none; }
+.brand small { display: block; font-family: var(--font-body); font-weight: 400; font-style: italic; letter-spacing: 0; color: var(--on-dark-soft); font-size: 13px; margin-top: 1px; }
+.tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
+.tab { background: none; border: 0; border-bottom: 1px solid transparent; padding: 4px 10px; cursor: pointer; font-family: var(--font-display); font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--on-dark-soft); flex: none; }
+.tab:hover { color: var(--on-dark); }
+.tab[aria-selected="true"] { color: var(--gold-hi); border-bottom-color: var(--rubric); }
+.counters { display: flex; gap: 16px; align-items: center; font-variant-numeric: oldstyle-nums tabular-nums; flex: none; }
+.ctr { display: flex; align-items: center; gap: 6px; font-size: 17px; }
+.ctr .lab { font-family: var(--font-display); font-size: 10px; letter-spacing: .16em; color: var(--on-dark-soft); text-transform: uppercase; display: block; line-height: 1.1; }
+.ctr small { color: var(--on-dark-soft); }
+
+.itin { position: absolute; left: 16px; top: calc(74px + env(safe-area-inset-top, 0px)); width: min(360px, calc(100% - 32px)); z-index: 4; padding: 14px 18px 14px; }
+.itin .t { font-family: var(--font-display); font-weight: 600; font-size: 21px; line-height: 1.15; margin: 4px 0 2px; text-wrap: balance; }
+.itin .en { font-style: italic; color: var(--ink-soft); font-size: 15.5px; }
+.itin .now { font-size: 15px; margin-top: 6px; line-height: 1.35; }
+.itin .now b { font-family: var(--font-display); font-size: 10.5px; letter-spacing: .16em; color: var(--rubric); font-weight: 600; margin-right: 4px; }
+
+#detail { position: absolute; right: 16px; top: calc(74px + env(safe-area-inset-top, 0px)); width: 390px; max-height: calc(100% - 250px); overflow: auto; z-index: 6; padding: 18px 20px 18px; }
+#detail .x { position: absolute; right: 12px; top: 8px; background: none; border: 0; font-size: 26px; line-height: 1; cursor: pointer; color: var(--ink-soft); }
+.dhead { display: grid; grid-template-columns: 84px 1fr; gap: 14px; align-items: center; margin-bottom: 6px; }
+.roundel { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; background: var(--vellum-2);
+  box-shadow: 0 0 0 3px var(--ring, var(--ink)), 0 0 0 5px var(--vellum), 0 0 0 6px var(--gold); }
+.roundel .pix { width: 64px; height: 64px; }
+#detail h2 { font-family: var(--font-display); font-weight: 600; font-size: 23px; line-height: 1.12; margin: 2px 0 4px; text-wrap: balance; }
+.where { color: var(--ink-soft); font-size: 15px; line-height: 1.3; }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 2px; font-size: 13px; }
+.badge { font-style: italic; color: var(--ink-soft); border: 1px solid #c9b48a; padding: 0 8px; border-radius: 10px; }
+.badge.text { color: #3c5a1e; border-color: #8aa060; }
+.badge.interp { color: var(--rubric); border-color: #d49a8a; }
+.note { font-size: 17px; line-height: 1.5; margin: 10px 0; }
+.verse { margin: 12px 0; padding: 2px 0 2px 18px; position: relative; }
+.verse::before { content: "¶"; position: absolute; left: 0; top: 0; color: var(--rubric); font-size: 20px; line-height: 1.2; }
+.verse .it { font-style: italic; font-size: 18px; line-height: 1.35; }
+.verse .en { color: var(--ink-soft); font-size: 15px; margin-top: 4px; line-height: 1.4; }
+.verse .en::before { content: "Longfellow · "; font-family: var(--font-display); font-size: 10px; letter-spacing: .14em; color: var(--gold); }
+.sect { font-family: var(--font-display); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--rubric); margin: 16px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #c9b48a; }
+.links { display: grid; gap: 4px; }
+.linkbtn { text-align: left; background: none; border: 0; border-left: 3px solid var(--c, var(--ink)); padding: 4px 8px; cursor: pointer; display: grid; gap: 1px; color: var(--ink); }
+.linkbtn:hover { background: rgba(120,80,30,.1); }
+.linkbtn b { font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 6px; }
+.linkbtn span { color: var(--ink-soft); font-size: 14px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.leaf .btn { color: var(--ink); border-color: var(--gold); background: transparent; }
+.leaf .btn:hover { background: rgba(184,137,42,.18); }
+
+.btn { border: 1px solid #6a5a44; background: rgba(14,10,7,.6); padding: 6px 14px; cursor: pointer; font-family: var(--font-display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--on-dark);
+  display: inline-flex; align-items: center; gap: 8px; }
+.btn:hover { border-color: var(--gold-hi); }
+.btn[aria-pressed="true"] { background: var(--gold); border-color: var(--gold-hi); color: #1a120a; }
+.btn .key { font-family: var(--font-body); font-size: 12px; letter-spacing: 0; text-transform: none; font-style: italic; opacity: .75; }
+
+#drawer { position: absolute; left: 16px; top: calc(250px + env(safe-area-inset-top, 0px)); width: 360px; max-height: calc(100% - 420px); min-height: 180px; overflow: auto; z-index: 6; padding: 16px 18px; }
+#drawer h3 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0 0 2px; }
+#drawer .sub { font-style: italic; color: var(--ink-soft); margin-bottom: 10px; }
+.search { width: 100%; background: rgba(255,255,255,.5); border: 1px solid #c9b48a; color: var(--ink); padding: 6px 8px; font: inherit; margin-bottom: 8px; }
+.rows { display: grid; gap: 1px; }
+.row { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; padding: 3px 6px; background: none; border: 0; text-align: left; cursor: pointer; color: var(--ink); font-size: 15.5px; }
+.row:hover { background: rgba(120,80,30,.1); }
+.row.dim { color: var(--ink-soft); font-style: italic; }
+.row.dim .pix { filter: grayscale(.85) brightness(.75); }
+.grouphead { font-family: var(--font-display); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--rubric); margin: 12px 0 2px; }
+.state { font-size: 12.5px; font-style: italic; padding: 0 7px; border-radius: 9px; border: 1px solid #c9b48a; color: var(--ink-soft); }
+.state.passed { color: var(--ink); }
+.state.current { background: var(--gold); border-color: var(--gold); color: #1a120a; }
+.legend-grid { display: grid; grid-template-columns: 26px 1fr; gap: 6px 10px; align-items: center; font-size: 15px; }
+.swatch { width: 22px; height: 14px; display: inline-block; border: 1px solid rgba(0,0,0,.3); }
+.ringsw { width: 20px; height: 20px; border-radius: 50%; background: var(--vellum-2); box-shadow: 0 0 0 3px var(--c) inset; display: inline-block; }
+.legend-p { font-size: 15px; line-height: 1.45; margin: 8px 0; }
+
+.medallions { position: absolute; right: 16px; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); width: 360px; z-index: 4; }
+.medallions .ttl { text-align: right; font-family: var(--font-display); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-hi); margin-bottom: 6px; text-shadow: 0 1px 2px #000; }
+.medgrid { display: flex; flex-wrap: wrap-reverse; justify-content: flex-end; gap: 6px; }
+.med { width: 52px; height: 52px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center; background: var(--vellum-2);
+  box-shadow: 0 0 0 2px var(--c, var(--ink)), 0 0 0 3px var(--gold), 0 3px 8px rgba(0,0,0,.6); }
+.med .pix { width: 40px; height: 40px; }
+.med.ahead { background: #6d6250; }
+.med.ahead .pix { filter: grayscale(.85) brightness(.7); }
+.med.sel { box-shadow: 0 0 0 3px var(--gold-hi), 0 0 0 5px var(--rubric), 0 3px 8px rgba(0,0,0,.6); }
+
+.bottom { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(0deg, rgba(8,6,4,.95) 60%, rgba(8,6,4,0)); display: grid; gap: 8px; }
+.ctrlrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ctrlrow .spacer { flex: 1; }
+.scrub { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; border-top: 1px solid #4a3c2c; padding-top: 8px; }
+.readout { font-family: var(--font-display); font-size: 24px; color: var(--gold-hi); min-width: 130px; font-weight: 600; }
+.readout small { font-size: 10px; letter-spacing: .2em; color: var(--on-dark-soft); display: block; line-height: 1; font-weight: 400; }
+.track { position: relative; min-width: 0; }
+#canto { width: 100%; accent-color: var(--rubric); margin: 0; height: 22px; }
+.ticks { display: flex; justify-content: space-between; font-family: var(--font-display); font-size: 9.5px; color: var(--on-dark-soft); padding-inline: 6px; user-select: none; }
+.ticks span { width: 0; display: flex; justify-content: center; }
+.ticks span.now { color: var(--gold-hi); font-weight: 700; }
+.hints { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; font-size: 14px; font-style: italic; color: var(--on-dark-soft); }
+.hints b { font-style: normal; font-family: var(--font-display); font-size: 11px; color: var(--on-dark); margin-right: 4px; }
+
+#incipit { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgba(6,4,3,.72); }
+#incipit .leaf { max-width: 600px; max-height: calc(100% - 32px); overflow: auto; padding: 30px 34px 26px; }
+#incipit h1 { font-family: var(--font-display); font-weight: 700; letter-spacing: .3em; font-size: 28px; margin: 4px 0 2px; color: var(--ink); }
+#incipit .lede { font-style: italic; color: var(--ink-soft); font-size: 17px; margin-bottom: 14px; }
+#incipit p { font-size: 17.5px; line-height: 1.55; margin: 10px 0; }
+#incipit p.first::first-letter { float: left; font-family: var(--font-display); font-weight: 700; font-size: 58px; line-height: .9; color: var(--rubric); padding: 4px 8px 0 0; }
+#incipit .verse { margin: 14px 0; }
+#incipit .go { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; }
+#incipit .btn { color: var(--ink); border-color: var(--gold); background: transparent; font-size: 13px; padding: 8px 18px; }
+#incipit .btn.primary { background: var(--rubric); border-color: var(--rubric); color: var(--vellum); }
+
+#loading { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; font-size: 18px; z-index: 30; background: var(--bg); font-style: italic; color: var(--on-dark-soft); }
+#loading .t { font-family: var(--font-display); color: var(--gold-hi); font-size: 26px; letter-spacing: .3em; font-style: normal; }
+
+@media (min-width: 901px) { #detail { max-height: calc(100% - 330px); } }
+@media (max-width: 1100px) { .ticks span:not(.five) { visibility: hidden; } .ticks span.now { visibility: visible; } .brand small { display: none; } }
+@media (max-width: 900px) { .medallions { display: none; } .ctr .lab { display: none; } }
+@media (max-width: 720px) {
+  .counters, .brand { display: none; }
+  .itin { padding: 10px 14px; }
+  .itin .now { display: none; }
+  .itin .t { font-size: 17px; }
+  #detail { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 58%; z-index: 8; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+  #drawer { left: 16px; right: 16px; width: auto; top: calc(170px + env(safe-area-inset-top, 0px)); max-height: calc(100% - 350px); }
+  .hints { display: none; }
+  .readout { min-width: 92px; font-size: 19px; }
+  .btn .key { display: none; }
+  #incipit .leaf { padding: 22px 20px; }
+}
+</style>
+
+<div id="app">
+  <canvas id="gl" aria-label="3D cutaway model of Dante's Hell inside the Earth"></canvas>
+  <div id="labels"></div>
+
+  <header class="topbar">
+    <div class="brand">INFERNVS<small>Dante's Hell, placed from the poem</small></div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="map" aria-selected="true" title="Map">Mappa</button>
+      <button class="tab" role="tab" data-tab="codex" aria-selected="false" title="Index of souls, guardians, places and events">Index</button>
+      <button class="tab" role="tab" data-tab="groups" aria-selected="false" title="The circles, in order">Circuli</button>
+      <button class="tab" role="tab" data-tab="legend" aria-selected="false" title="Key to the map">Clavis</button>
+      <button class="tab" role="tab" data-tab="intro" aria-selected="false" title="Opening page">Prooemium</button>
+    </nav>
+    <div class="counters" id="counters"></div>
+  </header>
+
+  <section class="itin leaf" aria-live="polite">
+    <div class="eyebrow" id="itEyebrow">Itinerarium</div>
+    <div class="t" id="itTitle">…</div>
+    <div class="en" id="itEn"></div>
+    <div class="now" id="itNow"></div>
+  </section>
+
+  <aside id="drawer" class="leaf" hidden></aside>
+  <aside id="detail" class="leaf" hidden aria-live="polite"></aside>
+
+  <section class="medallions" aria-label="Points of interest in this circle">
+    <div class="ttl" id="medTitle">In hoc circulo</div>
+    <div class="medgrid" id="medgrid"></div>
+  </section>
+
+  <footer class="bottom">
+    <div class="ctrlrow">
+      <button class="btn" id="btnPlay" aria-pressed="false"><span id="playLbl">▶ Play the journey</span> <span class="key">space</span></button>
+      <button class="btn" id="btnFly" aria-pressed="false">Fly <span class="key">G</span></button>
+      <button class="btn" id="btnIcons" aria-pressed="true">Icons <span class="key">I</span></button>
+      <button class="btn" id="btnLinks" aria-pressed="true">Links</button>
+      <button class="btn" id="btnLabels" aria-pressed="true">Labels</button>
+      <span class="spacer"></span>
+      <button class="btn" id="btnReset">Whole Earth <span class="key">R</span></button>
+    </div>
+    <div class="scrub">
+      <div class="readout" id="readout"><small>CANTO</small>I</div>
+      <div class="track">
+        <input type="range" id="canto" min="1" max="35" step="0.01" value="10.3" aria-label="Journey position by canto">
+        <div class="ticks" id="ticks"></div>
+      </div>
+    </div>
+    <div class="hints" id="hints"></div>
+  </footer>
+
+  <div id="incipit" hidden>
+    <div class="leaf" role="dialog" aria-labelledby="incipitTitle">
+      <div class="eyebrow">Incipit</div>
+      <h1 id="incipitTitle">INFERNVS</h1>
+      <div class="lede">Hell as Dante Alighieri built it in the <i>Inferno</i> (c. 1308–1321), placed point by point from the poem.</div>
+      <p class="first">Dante's Hell is a cone driven into the Earth beneath Jerusalem. Its point is the center of the world, and every circle is measured as distance from God.</p>
+      <p>The first circle holds no criminals. Limbo keeps the good who lived before Christ or died unbaptized. Virgil says plainly “they sinned not” (IV.34). Their only punishment is what they lack:</p>
+      <div class="verse"><div class="it">semo perduti, e sol di tanto offesi / che sanza speme vivemo in disio.</div><div class="en">Lost are we and are only so far punished, / That without hope we live on in desire. <span class="cite">IV.41-42</span></div></div>
+      <p>Each circle down is a further turning away. At the bottom there is no fire at all. The worst traitors are sealed in ice, frozen by the wind of Lucifer's wings (XXXIV.46-52), as far from warmth and light as anything can be.</p>
+      <p>Every soul, guardian and landmark here is cited by canto and line. Where Dante gives no measurement, the proportions follow Renaissance reconstructions.</p>
+      <div class="go"><button class="btn primary" id="btnEnter">Intra · Enter</button><button class="btn" id="btnTour">Begin the journey</button></div>
+    </div>
+  </div>
+
+  <div id="loading"><div><div class="t">INFERNVS</div><div id="loadMsg">Preparing the map…</div></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===== Pixel sprite engine: turns sprites.json into one texture atlas (data in, pictures out) ===== */
+function buildPix(spec) {
+  const N = 16, CELL = 18, COLS = 16, PAL = spec.palette, BLANK = () => '.'.repeat(N).split('');
+  const grid = (rows) => { const g = (rows || []).map((r) => (r + '.'.repeat(N)).slice(0, N).split('')); while (g.length < N) g.push(BLANK()); return g.slice(0, N); };
+  const stamp = (g, row, rows) => rows.forEach((r, i) => { const y = row + i; if (y < 0 || y >= N) return; for (let x = 0; x < r.length && x < N; x++) { const ch = r[x]; if (ch === '.') continue; g[y][x] = ch === '_' ? '.' : ch; } });
+  const sub = (g, map) => g.map((r) => r.map((ch) => (map[ch] !== undefined ? map[ch] : ch)));
+  const flipV = (g) => g.slice().reverse().map((r) => r.slice());
+  const rot = (g) => { const o = []; for (let y = 0; y < N; y++) { o.push([]); for (let x = 0; x < N; x++) o[y].push(g[N - 1 - x][y]); } return o; };
+  const center = (g) => { let mn = N, mx = -1; g.forEach((r) => r.forEach((c, x) => { if (c !== '.') { mn = Math.min(mn, x); mx = Math.max(mx, x); } }));
+    if (mx < 0) return g; const sh = Math.floor((N - 1 - mx - mn) / 2); if (!sh) return g;
+    return g.map((r) => { const o = BLANK(); r.forEach((c, x) => { const nx = x + sh; if (nx >= 0 && nx < N) o[nx] = c; }); return o; }); };
+  const POST = {
+    flipV,
+    flipFire: (g) => { g = flipV(g); stamp(g, 0, ['..o..o....o..o..', '.oyo.oyo..oyooyo', '..r..r....r..r..']); return g; },
+    crossRot: (g) => { for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (g[y][x] === '.' && (x === 7 || x === 8 || y === 9)) g[y][x] = 'n'; return rot(g); },
+    statueBands: (g) => g.map((r, y) => r.map((c, x) => { if (c === '.' || c === 'k') return c; if (y <= 7) return y === 5 && (x === 6 || x === 9) ? 'Y' : 'y'; if (y <= 10) return 'g'; if (y <= 12) return 'o'; if (y <= 14) return 'e'; return x < 8 ? 'e' : 'n'; })),
+  };
+  function make(def) {
+    let g;
+    if (def.grid) g = grid(def.grid);
+    else if (def.person) {
+      const o = def.person; g = grid(spec.base);
+      (o.mods || []).forEach((m) => { const M = spec.mods[m]; if (M) stamp(g, M[0], M[1]); else console.warn('Unknown mod', m); });
+      g = sub(g, { H: o.hair || 'h', X: o.robe || 'g', x: o.shade || 'd', s: o.skin || 's', S: o.skinS || 'S', W: o.wing || 'w' });
+    } else if (def.template) {
+      g = sub(grid(spec.templates[def.template]), def.colors || {});
+      (def.stamps || []).forEach(([r, rows]) => stamp(g, r, rows));
+    } else g = grid([]);
+    if (def.post && POST[def.post]) g = POST[def.post](g);
+    return center(g);
+  }
+  const names = Object.keys(spec.sprites), index = {};
+  const ROWS = Math.max(1, Math.ceil(names.length / COLS));
+  const canvas = document.createElement('canvas'); canvas.width = COLS * CELL; canvas.height = ROWS * CELL;
+  const ctx = canvas.getContext('2d');
+  names.forEach((name, i) => {
+    index[name] = i;
+    let g; try { g = make(spec.sprites[name]); } catch (e) { console.warn('Bad sprite', name, e); g = grid([]); }
+    const ox = (i % COLS) * CELL + 1, oy = Math.floor(i / COLS) * CELL + 1;
+    const filled = (x, y) => x >= 0 && y >= 0 && x < N && y < N && g[y][x] !== '.';
+    ctx.fillStyle = PAL.k || '#000';
+    for (let y = -1; y <= N; y++) for (let x = -1; x <= N; x++) { if (filled(x, y)) continue; if (filled(x - 1, y) || filled(x + 1, y) || filled(x, y - 1) || filled(x, y + 1)) ctx.fillRect(ox + x, oy + y, 1, 1); }
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const c = g[y][x]; if (c !== '.' && PAL[c]) { ctx.fillStyle = PAL[c]; ctx.fillRect(ox + x, oy + y, 1, 1); } }
+  });
+  const urls = {};
+  const resolve = (name, kind) => (name in index ? name : (spec.kindDefaults || {})[kind] in index ? spec.kindDefaults[kind] : names[0]);
+  function url(name) {
+    if (!urls[name]) { const c = document.createElement('canvas'); c.width = c.height = CELL; const i = index[name];
+      c.getContext('2d').drawImage(canvas, (i % COLS) * CELL, Math.floor(i / COLS) * CELL, CELL, CELL, 0, 0, CELL, CELL); urls[name] = c.toDataURL(); }
+    return urls[name];
+  }
+  return { canvas, index, names, resolve, url, COLS, ROWS, CELL };
+}
+</script>
+<script>
+(() => {
+'use strict';
+const $ = (s) => document.querySelector(s);
+const DEG = Math.PI / 180;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const ROMAN = ['', 'I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI','XXII','XXIII','XXIV','XXV','XXVI','XXVII','XXVIII','XXIX','XXX','XXXI','XXXII','XXXIII','XXXIV'];
+const romanToInt = (s) => { const m = { I: 1, V: 5, X: 10, L: 50 }; let t = 0; for (let i = 0; i < s.length; i++) { const a = m[s[i]], b = m[s[i + 1]] || 0; t += a < b ? -a : a; } return t; };
+const cantoOf = (cite) => { const m = /^([IVXL]+)/.exec(cite || ''); return m ? romanToInt(m[1]) : 1; };
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let seed = 1337; const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+/* ---- the globe and its open wedge ---- */
+const W0 = 140, W1 = 200;                 // the cut-away wedge, in degrees around the axis
+const PHI_S = (90 - W0 - 360) * DEG, PHI_L = (360 - (W1 - W0)) * DEG;
+const CY = -126, RS = 190.2, YTOP = 8;    // Earth's center (Lucifer's hip), Earth radius, ground level
+const inWedge = (a) => { const x = ((a % 360) + 360) % 360; return x > W0 - 2 && x < W1 + 2; };
+
+const KIND = {
+  soul: { shape: 0, ring: [0.17, 0.12, 0.07], la: 'Anima', en: 'Soul', css: '#2a1d12' },
+  guardian: { shape: 1, ring: [0.64, 0.15, 0.11], la: 'Custos', en: 'Guardian or monster', css: '#a3271b' },
+  place: { shape: 2, ring: [0.17, 0.29, 0.54], la: 'Locus', en: 'Place', css: '#2b4a8a' },
+  event: { shape: 3, ring: [0.72, 0.54, 0.16], la: 'Eventus', en: 'Event', css: '#b8892a' },
+  absent: { shape: 4, ring: [0.45, 0.42, 0.38], la: 'Exspectatus', en: 'Not yet arrived', css: '#8a7f70' },
+};
+const EDGE = { pair: ['#efe4cc', 'Bound together'], betray: ['#d0442f', 'Betrayal'], cause: ['#7f9fe0', 'Cause and effect'], source: ['#7f9fe0', 'Source'], fate: ['#e0bb64', 'Foretold, or waiting below'], echo: ['#b49ad8', 'Echo across the poem'], summon: ['#e0bb64', 'Summons'], home: ['#e0bb64', 'Home'], judge: ['#e0bb64', 'Judgment'], lie: ['#d0442f', 'Lie'] };
+const LATIN_NUM = (g) => g.replace(/Circle (\d+)/, (_, n) => 'Circulus ' + ROMAN[+n]).replace('Ante-Inferno', 'Ante-Infernum').replace('Above', 'Super Terram').replace('The Well', 'Puteus').replace('Center', 'Centrum').replace('Exit', 'Exitus');
+
+let PIX, D, LV = {}, LEVELS = [], NODES = [], NODE = {}, PATH = [];
+let renderer, scene, camera, clock;
+const S = { icons: true, canto: 10.3, curLevel: null, focusLevel: null, fadeLv: null, sel: null, selLevel: null, hover: null, playing: false, follow: false, fly: false, links: true, labels: true, tab: 'map', key: '' };
+
+const getJSON = (f) => fetch(f).then((r) => { if (!r.ok) throw new Error(f + ' ' + r.status); return r.json(); });
+Promise.all([getJSON('inferno.json'), getJSON('sprites.json')]).then(([d, sp]) => init(d, sp)).catch((e) => {
+  $('#loadMsg').textContent = "The map data (inferno.json or sprites.json) didn't load. Reload the page to try again.";
+  console.error(e);
+});
+
+/* ======================= helpers ======================= */
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const polar = (rad, aDeg, y) => V(rad * Math.cos(aDeg * DEG), y, rad * Math.sin(aDeg * DEG));
+const NODE_OR_LEVEL = (id) => !!(NODE[id] || LV[id]);
+const floorY = (L) => (L.kind === 'bolgia' ? L.y - 3 : L.y);
+function posOf(o) {
+  const L = LV[o.lv];
+  const rad = o.rad != null ? o.rad : L.ro - (o.r || 0) * (L.ro - L.ri);
+  const y = o.y != null ? o.y : floorY(L) + 0.45 + (o.h || 0);
+  return polar(rad, o.a || 0, y);
+}
+
+/* ---- fading: every mesh belongs to a level (or to the Earth) ---- */
+let CTX = null; const fadeables = [];
+function tag(obj, lv = CTX) {
+  const m = obj.material; if (!m) return obj;
+  if (m.userData.lv !== undefined && m.userData.lv !== lv) obj.material = m.clone();
+  obj.material.userData.lv = lv; if (obj.material.userData.base === undefined) obj.material.userData.base = obj.material.opacity;
+  obj.userData.lv = lv; fadeables.push(obj); return obj;
+}
+function add(obj, lv) { scene.add(obj); return tag(obj, lv); }
+
+/* ======================= procedural textures ======================= */
+function makeNoise(seedN) {
+  let s = seedN; const r = () => (s = (s * 16807) % 2147483647) / 2147483647; const tables = {};
+  return (x, y, f) => {
+    let t = tables[f]; if (!t) { t = new Float32Array(f * f); for (let i = 0; i < f * f; i++) t[i] = r(); tables[f] = t; }
+    const fx = x * f, fy = y * f, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    const at = (xx, yy) => t[(((yy % f) + f) % f) * f + (((xx % f) + f) % f)];
+    const a = at(x0, y0), b = at(x0 + 1, y0), c = at(x0, y0 + 1), d = at(x0 + 1, y0 + 1);
+    return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+  };
+}
+const NZ = makeNoise(4242), NZ2 = makeNoise(777);
+const fbm = (N, x, y, base = 4, oct = 4) => { let v = 0, amp = 0.5, f = base, tot = 0; for (let o = 0; o < oct; o++) { v += amp * N(x, y, f); tot += amp; amp *= 0.5; f *= 2; } return v / tot; };
+const mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const TEX = {};
+const TEX_RECIPES = {
+  stone: (x, y) => { const v = fbm(NZ, x, y, 4, 5), r = 1 - Math.abs(2 * NZ2(x, y, 8) - 1); let c = mixc([92, 80, 64], [168, 150, 122], v); if (r > 0.94) c = mixc(c, [40, 32, 24], 0.6); return c; },
+  earth: (x, y) => { const v = fbm(NZ, x, y, 4, 5); let c = mixc([62, 54, 34], [112, 98, 64], v); if (NZ2(x, y, 64) > 0.78) c = mixc(c, [70, 86, 40], 0.6); return c; },
+  water: (x, y) => { const v = fbm(NZ, x, y, 4, 4), w = Math.sin((y * 26 + v * 4) * Math.PI * 2) * 0.5 + 0.5; return mixc(mixc([22, 34, 44], [46, 66, 80], v), [92, 116, 128], Math.pow(w, 8) * 0.6); },
+  mud: (x, y) => { const v = fbm(NZ, x, y, 4, 5); let c = mixc([40, 31, 20], [88, 72, 44], v); if (NZ2(x, y, 32) > 0.8) c = mixc(c, [64, 74, 40], 0.5); return c; },
+  blood: (x, y) => { const v = fbm(NZ, x, y, 4, 4), w = Math.sin((y * 18 + v * 5) * Math.PI * 2) * 0.5 + 0.5; return mixc(mixc([64, 10, 6], [130, 24, 14], v), [190, 60, 30], Math.pow(w, 10) * 0.7); },
+  forest: (x, y) => { const v = fbm(NZ, x, y, 6, 5); let c = mixc([30, 26, 18], [70, 58, 38], v); if (NZ2(x, y, 48) > 0.75) c = mixc(c, [52, 40, 22], 0.6); return c; },
+  sand: (x, y) => { const v = fbm(NZ, x, y, 6, 5); let c = mixc([140, 102, 58], [206, 162, 100], v); const e = NZ2(x, y, 96); if (e > 0.86) c = mixc(c, [255, 120, 32], (e - 0.86) * 7); return c; },
+  iron: (x, y) => { const v = fbm(NZ, x, y, 4, 5), rust = fbm(NZ2, x, y, 3, 3); let c = mixc([62, 58, 56], [120, 112, 104], v); c = mixc(c, [128, 72, 40], Math.max(0, rust - 0.55) * 1.6); if (1 - Math.abs(2 * NZ2(x, y, 12) - 1) > 0.95) c = mixc(c, [30, 26, 22], 0.6); return c; },
+  ice: (x, y) => { const v = fbm(NZ, x, y, 4, 4), r = 1 - Math.abs(2 * NZ2(x, y, 6) - 1); let c = mixc([168, 196, 214], [232, 244, 250], v); if (r > 0.95) c = mixc(c, [96, 136, 166], 0.7); return c; },
+  core: (x, y) => mixc([30, 18, 14], [70, 34, 24], fbm(NZ, x, y, 4, 4)),
+  rock: (x, y) => { const v = fbm(NZ, x, y * 0.25 + x * 0.1, 6, 4), st = Math.sin((x * 30 + v * 3) * Math.PI * 2) * 0.5 + 0.5; return mixc(mixc([52, 45, 38], [110, 96, 80], v), [40, 34, 28], st * 0.35); },
+  strata: (x, y) => {
+    const BANDS = [[94, 76, 54], [124, 102, 72], [80, 66, 52], [108, 90, 66], [68, 56, 44], [134, 112, 82], [86, 70, 56]];
+    const t = y * 7 + fbm(NZ, x, y, 3, 3) * 0.8, i = Math.floor(t), f = t - i;
+    let c = BANDS[((i % BANDS.length) + BANDS.length) % BANDS.length];
+    c = mixc(c, [30, 24, 18], f < 0.04 ? 0.6 : 0); return mixc(c, [24, 18, 12], (1 - fbm(NZ2, x, y, 8, 3)) * 0.35);
+  },
+  crust: (x, y) => mixc([58, 50, 40], [104, 92, 72], fbm(NZ, x, y, 5, 5)),
+  ocean: (x, y) => { const v = fbm(NZ, x, y, 4, 4), w = Math.sin((y * 30 + v * 5) * Math.PI * 2) * 0.5 + 0.5; return mixc(mixc([16, 34, 52], [38, 70, 96], v), [120, 150, 170], Math.pow(w, 12) * 0.5); },
+};
+function texture(kind) {
+  if (!TEX[kind]) {
+    const N = 256, c = document.createElement('canvas'); c.width = c.height = N;
+    const g = c.getContext('2d'), img = g.createImageData(N, N), fn = TEX_RECIPES[kind] || TEX_RECIPES.stone;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const col = fn(x / N, y / N), i = (y * N + x) * 4; img.data[i] = col[0]; img.data[i + 1] = col[1]; img.data[i + 2] = col[2]; img.data[i + 3] = 255; }
+    g.putImageData(img, 0, 0);
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; TEX[kind] = t;
+  }
+  return TEX[kind];
+}
+function texMat(kind, rx, ry, extra = {}) {
+  const t = texture(kind).clone(); t.needsUpdate = true; t.repeat.set(Math.max(1, rx), Math.max(1, ry));
+  return new THREE.MeshStandardMaterial({ map: t, roughness: 0.95, metalness: 0, side: THREE.DoubleSide, ...extra });
+}
+const plainMat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0, side: THREE.DoubleSide, ...extra });
+const FLOOR_TEX = { ground: 'earth', terrace: 'stone', river: 'water', marsh: 'mud', blood: 'blood', wood: 'forest', sand: 'sand', bolgia: 'iron', well: 'iron', ice: 'ice', core: 'core' };
+const latheW = (pts, m, seg = 140) => new THREE.Mesh(new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg, PHI_S, PHI_L), m);
+
+/* ======================= init ======================= */
+function init(data, spriteSpec) {
+  D = data;
+  PIX = buildPix(spriteSpec);
+  LEVELS = D.levels.map((l, i) => ({ ...l, idx: i }));
+  LEVELS.forEach((l) => (LV[l.id] = l));
+  NODES = D.nodes.filter((n) => { const ok = n.id && LV[n.lv]; if (!ok) console.warn('Skipping point with unknown level', n); return ok; })
+    .map((n) => ({ ...n, k: KIND[n.k] ? n.k : 'soul', canto: cantoOf(n.cite), pos: null, links: [] }));
+  NODES.forEach((n) => { n.sprite = PIX.resolve(n.icon, n.k); NODE[n.id] = n; });
+  D.edges = (D.edges || []).filter((e) => (NODE_OR_LEVEL(e.a) && NODE_OR_LEVEL(e.b)) || (console.warn('Skipping link with a missing end', e), false));
+  NODES.forEach((n) => (n.pos = posOf(n)));
+  D.edges.forEach((e) => { const A = NODE[e.a], B = NODE[e.b]; if (A) A.links.push({ to: e.b, e }); if (B) B.links.push({ to: e.a, e }); });
+
+  canvasSetup();
+  buildEarth();
+  buildLevels();
+  buildLandmarks();
+  buildPath();
+  buildMarkers();
+  buildEdges();
+  buildParticles();
+  buildUI();
+  setCanto(S.canto, true);
+  resetView(true);
+  $('#loading').hidden = true;
+  let seen = false; try { seen = localStorage.getItem('inferno-incipit') === '1'; } catch (e) {}
+  if (!seen) $('#incipit').hidden = false;
+  requestAnimationFrame(loop);
+}
+
+function canvasSetup() {
+  const canvas = $('#gl');
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0);
+  scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x140e09, 700, 1500);
+  camera = new THREE.PerspectiveCamera(45, 1, 0.1, 4000);
+  scene.add(new THREE.HemisphereLight(0xfff0d6, 0x2a1a10, 1.0));
+  const sun = new THREE.DirectionalLight(0xfff2dc, 0.75); sun.position.set(-0.4, 1, 0.5); scene.add(sun);
+  const fireLight = (c, i, d, y) => { const l = new THREE.PointLight(c, i, d, 2); l.position.set(0, y, 0); scene.add(l); };
+  fireLight(0xff5a1e, 3.0, 110, -40);   // the burning city of Dis
+  fireLight(0xff3a10, 2.0, 70, -58);    // Phlegethon and the rain of fire
+  fireLight(0xa8d0ff, 2.2, 45, -108);   // Cocytus: cold, not fire
+  clock = new THREE.Clock();
+  addEventListener('resize', resize); resize();
+  bindControls(canvas);
+}
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  if (markerMat) markerMat.uniforms.uScale.value = h * renderer.getPixelRatio();
+}
+
+/* ======================= the Earth (cutaway globe) ======================= */
+let tunnelCurve;
+function funnelProfile() {
+  const pts = [];
+  LEVELS.forEach((L, i) => {
+    if (L.kind === 'tunnel') return;
+    if (L.kind === 'bolgia') { pts.push([L.ro, L.y], [L.ro - 0.35, L.y - 3], [L.ri + 0.35, L.y - 3]); return; }
+    if (L.kind === 'core') { pts.push([L.ro, L.y], [0, L.y]); return; }
+    pts.push([L.ro, L.y], [L.ri, L.y]);
+  });
+  return pts.filter((p, i) => i === 0 || p[0] !== pts[i - 1][0] || p[1] !== pts[i - 1][1]);
+}
+function buildEarth() {
+  CTX = 'earth';
+  const topAng = Math.asin((YTOP - CY) / RS);
+  const arc = (a0, a1, n) => { const o = []; for (let i = 0; i <= n; i++) { const t = a0 + (a1 - a0) * (i / n); o.push([RS * Math.cos(t), CY + RS * Math.sin(t)]); } return o; };
+  // outer shell: rock crust above the center, ocean over the southern hemisphere
+  add(latheW(arc(0, topAng, 40).map(([r, y]) => [Math.max(0.01, r), y]), texMat('crust', 18, 4)));
+  add(latheW(arc(-Math.PI / 2, 0, 50).map(([r, y]) => [Math.max(0.01, r), y]), texMat('ocean', 18, 5)));
+  // tunnel: the hidden way runs up the far side of the Earth, carved into the cut face at W1
+  const tp = [[0.9, CY - 2], [5, -150], [11, -205], [9, -262], [2.5, -312], [1.5, CY - RS + 2]];
+  tunnelCurve = new THREE.CatmullRomCurve3(tp.map(([r, y]) => polar(r, W1, y)));
+  // cross-section faces (the cut), with earth strata
+  const prof = funnelProfile();
+  const outline = [...prof, [0, CY - RS], ...arc(-Math.PI / 2, topAng, 60).slice(1, -1)];
+  const shape = new THREE.Shape(outline.map(([r, y]) => new THREE.Vector2(r, y)));
+  const holeShape = new THREE.Shape(outline.map(([r, y]) => new THREE.Vector2(r, y)));
+  const samples = tp.slice(0, 5); const hole = new THREE.Path();
+  const left = [], right = [];
+  for (let i = 0; i <= 40; i++) { const p = new THREE.CatmullRomCurve3(samples.map(([r, y]) => V(r, y, 0))).getPoint(i / 40); left.push([Math.max(0.45, p.x - 2.2), p.y]); right.push([p.x + 2.2, p.y]); }
+  [...right, ...left.reverse()].forEach(([x, y], i) => (i ? hole.lineTo(x, y) : hole.moveTo(x, y)));
+  holeShape.holes.push(hole);
+  const sectMat = () => { const m = texMat('strata', 1, 1); m.map.repeat.set(1 / 70, 1 / 70); m.map.offset.set(0, 0.3); return m; };
+  const faceA = add(new THREE.Mesh(new THREE.ShapeGeometry(shape, 1), sectMat())); faceA.rotation.y = -W0 * DEG;
+  const faceB = add(new THREE.Mesh(new THREE.ShapeGeometry(holeShape, 1), sectMat())); faceB.rotation.y = -W1 * DEG;
+  // section edge lines, like an engraved diagram
+  const edgeM = new THREE.LineBasicMaterial({ color: 0x1a120a, transparent: true, opacity: 0.85 });
+  [W0, W1].forEach((a) => add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(outline.concat([outline[0]]).map(([r, y]) => polar(r, a, y))), edgeM.clone())));
+  // the tunnel itself (seen from inside the cut)
+  add(new THREE.Mesh(new THREE.TubeGeometry(tunnelCurve, 80, 2.1, 10, false), texMat('rock', 8, 1, { side: THREE.BackSide })));
+  // Mount Purgatory at the antipode, rising (downward) from the ocean
+  const pg = new THREE.Group(); const py = CY - RS;
+  for (let k = 0; k < 7; k++) { const r = 16 - k * 2.1, h = 5; const ring = new THREE.Mesh(new THREE.CylinderGeometry(r - 1.2, r, h, 24), texMat(k === 6 ? 'earth' : 'stone', 4, 1)); ring.position.y = py - 1 - k * h - h / 2; ring.rotation.x = Math.PI; pg.add(ring); }
+  pg.children.forEach((m) => tag(m)); scene.add(pg);
+  // stars around the far hemisphere
+  const sp = []; for (let i = 0; i < 500; i++) { const u = rand() * 2 - 1, t = rand() * Math.PI * 2, rr = RS * (1.25 + rand() * 0.6); const y = CY + rr * u * 0.9; if (y > CY - 40) continue; sp.push(rr * Math.sqrt(1 - u * u) * Math.cos(t), y, rr * Math.sqrt(1 - u * u) * Math.sin(t)); }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+  add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xfff2d0, size: 1.4, transparent: true, opacity: 0.85 })));
+  CTX = null;
+}
+
+/* ======================= levels ======================= */
+const floorMats = {}, outlineMats = {};
+function arcLine(rad, y, m) { const pts = []; for (let i = 0; i <= 150; i++) pts.push(polar(rad, W1 + (i / 150) * (360 - (W1 - W0)), y)); return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), m); }
+function buildLevels() {
+  LEVELS.forEach((L, i) => {
+    const next = LEVELS[i + 1];
+    if (L.kind === 'tunnel') return;
+    CTX = L.id;
+    const w = Math.max(1, L.ro - L.ri), arcLen = 2 * Math.PI * L.ro * (300 / 360);
+    const fm = texMat(FLOOR_TEX[L.kind] || 'stone', Math.round(arcLen / 22), Math.max(1, Math.round(w / 18)));
+    floorMats[L.id] = fm;
+    const om = new THREE.LineBasicMaterial({ color: 0x1a120a, transparent: true, opacity: 0.6 }); outlineMats[L.id] = om;
+    const wallTex = (h) => texMat('rock', Math.round(arcLen / 18), Math.max(1, Math.round(h / 14)));
+    if (L.kind === 'bolgia') {
+      const fy = L.y - 3, ny = next ? next.y : L.y - 1.2;
+      add(latheW([[L.ri + 0.35, fy], [L.ro - 0.35, fy]], fm));
+      add(latheW([[L.ro - 0.35, fy], [L.ro, L.y]], wallTex(3)));
+      add(latheW([[L.ri, ny], [L.ri + 0.35, fy]], wallTex(3)));
+      add(arcLine(L.ro, L.y + 0.03, om));
+      return;
+    }
+    if (L.kind === 'core') { add(latheW([[0.01, L.y], [L.ro, L.y]], fm)); return; }
+    add(latheW([[L.ri, L.y], [L.ro, L.y]], fm));
+    add(arcLine(L.ro, L.y + 0.04, om)); add(arcLine(L.ri, L.y + 0.04, om));
+    if (next && next.kind !== 'tunnel' && next.y < L.y - 0.05) add(latheW([[L.ri, next.y], [L.ri, L.y]], wallTex(L.y - next.y)));
+  });
+  CTX = null;
+}
+
+/* ======================= landmarks ======================= */
+let wings = [];
+function addAt(mesh, p) { mesh.position.copy(p); add(mesh); return mesh; }
+function scatter(count, lv, rMin, rMax, geo, m, hFn) {
+  const L = LV[lv]; const inst = new THREE.InstancedMesh(geo, m, count); const o = new THREE.Object3D();
+  for (let i = 0; i < count; i++) {
+    let a; do { a = rand() * 360; } while (inWedge(a));
+    const r = rMin + rand() * (rMax - rMin), rad = L.ro - r * (L.ro - L.ri), s = hFn ? hFn() : 1;
+    o.position.copy(polar(rad, a, L.y)); o.position.y += (geo.parameters.height || 1) * s / 2;
+    o.rotation.set(0, rand() * Math.PI, 0); o.scale.set(s, s, s); o.updateMatrix(); inst.setMatrixAt(i, o.matrix);
+  }
+  return add(inst, lv);
+}
+function buildLandmarks() {
+  const stoneL = () => texMat('stone', 1, 1), rockM = () => texMat('rock', 1, 1);
+  CTX = 'surface';
+  addAt(new THREE.Mesh(new THREE.ConeGeometry(12, 20, 10), texMat('earth', 2, 1)), polar(121, 98, YTOP + 10));
+  addAt(new THREE.Mesh(new THREE.SphereGeometry(2.4, 12, 8), plainMat(0xffe6a0, { emissive: 0xffc860, emissiveIntensity: 0.9 })), polar(121, 98, YTOP + 24));
+  const treeGeo = new THREE.ConeGeometry(1.2, 5.5, 6);
+  { const L = LV.surface, inst = new THREE.InstancedMesh(treeGeo, plainMat(0x2c3a20), 220), o = new THREE.Object3D();
+    for (let i = 0; i < 220; i++) { const a = 103 + rand() * 30, rad = 104 + rand() * 28, s = 0.7 + rand() * 0.8; o.position.copy(polar(rad, a, YTOP + 2.75 * s)); o.scale.set(s, s, s); o.updateMatrix(); inst.setMatrixAt(i, o.matrix); }
+    add(inst); }
+  CTX = 'vestibule';
+  [70.6, 73.4].forEach((a) => addAt(new THREE.Mesh(new THREE.BoxGeometry(1.5, 8, 1.5), stoneL()), polar(99.4, a, 4)));
+  const lintel = addAt(new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.3, 7.4), stoneL()), polar(99.4, 72, 8.5)); lintel.lookAt(0, 8.5, 0);
+  CTX = 'limbo';
+  const cp = posOf({ lv: 'limbo', a: 36, r: 0.6 });
+  for (let k = 0; k < 3; k++) addAt(new THREE.Mesh(new THREE.CylinderGeometry(3.6 - k, 3.6 - k, 1.6 + k * 1.2, 16, 1, true), stoneL()), V(cp.x, LV.limbo.y + (1.6 + k * 1.2) / 2, cp.z));
+  addAt(new THREE.Mesh(new THREE.ConeGeometry(1.2, 2.5, 8), plainMat(0x8a2a1a)), V(cp.x, LV.limbo.y + 5.3, cp.z));
+  CTX = 'styx';
+  const tp = posOf({ lv: 'styx', a: -63, r: 0.05 });
+  addAt(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.1, 8, 10), stoneL()), V(tp.x, LV.styx.y + 4, tp.z));
+  addAt(new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 6), plainMat(0xff8030, { emissive: 0xff6010, emissiveIntensity: 1 })), V(tp.x, LV.styx.y + 8.5, tp.z));
+  // walls of Dis
+  const wallR = 47.5, wy0 = LV.styx.y, wy1 = wy0 + 11;
+  add(latheW([[wallR, wy0], [wallR, wy1]], texMat('iron', 40, 2)));
+  add(arcLine(wallR, wy1 + 0.7, new THREE.LineBasicMaterial({ color: 0xff5a20, transparent: true, opacity: 0.9 })));
+  const merlon = new THREE.BoxGeometry(1.2, 1.3, 1.2), merM = texMat('iron', 1, 1);
+  for (let a = 0; a < 360; a += 3.2) { if (inWedge(a)) continue; const d = ((a - 265 + 540) % 360) - 180; if (Math.abs(d) < 3) continue; addAt(new THREE.Mesh(merlon, merM), polar(wallR, a, wy1 + 0.65)); }
+  [-92.5, -97.5].forEach((a) => addAt(new THREE.Mesh(new THREE.BoxGeometry(2.2, 15, 2.2), merM), polar(wallR, a, wy0 + 7.5)));
+  CTX = 'heresy';
+  const ember = plainMat(0x3a1a12, { emissive: 0xd8401a, emissiveIntensity: 0.7 });
+  for (let i = 0; i < 16; i++) { let a; do { a = rand() * 360; } while (inWedge(a)); const p = polar(44 + rand() * 2, a, LV.heresy.y), h = 9 + rand() * 4;
+    addAt(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.2, h, 8), merM), V(p.x, p.y + h / 2, p.z));
+    addAt(new THREE.Mesh(new THREE.SphereGeometry(1.3, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), ember), V(p.x, p.y + h, p.z)); }
+  const tomb = new THREE.BoxGeometry(1.1, 0.7, 2.2);
+  scatter(190, 'heresy', 0.05, 0.95, tomb, ember);
+  for (let i = 0; i < 26; i++) { const t = rand(); const b = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8 + rand() * 1.4), stoneL()); b.rotation.set(rand() * 3, rand() * 3, 0); addAt(b, polar(40.2 - t * 1.5 + rand(), -70 + (rand() - 0.5) * 7, LV.heresy.y - t * 17)); }
+  CTX = 'wood';
+  scatter(280, 'wood', 0.08, 0.92, new THREE.ConeGeometry(0.55, 3.4, 5), plainMat(0x2e281e), () => 0.6 + rand() * 0.9);
+  CTX = 'sand';
+  const rv = addAt(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 3.4), plainMat(0x5a1010, { emissive: 0xb01a10, emissiveIntensity: 0.7 })), polar(31.5, -44, LV.sand.y + 0.25)); rv.lookAt(0, LV.sand.y + 0.25, 0);
+  const fall = addAt(new THREE.Mesh(new THREE.PlaneGeometry(2.6, 31), new THREE.MeshBasicMaterial({ color: 0xb01a10, transparent: true, opacity: 0.8, side: THREE.DoubleSide })), polar(29.85, -41, (LV.sand.y + LV.b1.y) / 2)); fall.lookAt(0, fall.position.y, 0);
+  // Malebolge bridges, all broken over bolgia 6
+  const spokes = [-25, -85]; for (let k = 0; k < 10; k++) spokes.push(-25 + k * 36);
+  LEVELS.filter((l) => l.kind === 'bolgia').forEach((L) => {
+    CTX = L.id; const next = LEVELS[L.idx + 1], bm = stoneL();
+    spokes.forEach((a) => {
+      if (inWedge(a)) return;
+      const p1 = polar(L.ro, a, L.y + 0.2), p2 = polar(L.ri, a, next.y + 0.2);
+      if (L.id === 'b6') { for (let k = 0; k < 4; k++) addAt(new THREE.Mesh(new THREE.DodecahedronGeometry(0.35 + rand() * 0.3), bm), p1.clone().lerp(p2, rand()).setY(L.y - 2.7 + rand() * 0.4)); return; }
+      const br = addAt(new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.35, p1.distanceTo(p2)), bm), p1.clone().lerp(p2, 0.5)); br.lookAt(p2);
+    });
+  });
+  CTX = 'well';
+  const gm = texMat('stone', 1, 2);
+  [-86, -110, -125, -150, -175, 125, 95, 55, 15, -30, -58].forEach((a) => { if (inWedge(a)) return; const p = polar(7.4, a, 0);
+    addAt(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.75, 21, 8), gm), V(p.x, LV.caina.y + 10.5, p.z));
+    addAt(new THREE.Mesh(new THREE.SphereGeometry(0.75, 10, 8), gm), V(p.x, LV.caina.y + 21.6, p.z)); });
+  CTX = 'core';
+  const lm = plainMat(0x5a1612), cy = LV.core.y;
+  addAt(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 8, 10), lm), V(0, -129.5, 0));
+  addAt(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 0.9, 13, 10), lm), V(0, cy + 5, 0));
+  addAt(new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 1), lm), V(0, cy + 13.3, 0));
+  [[0, 0xa3271b], [120, 0xe2d29a], [240, 0x161010]].forEach(([a, c]) => addAt(new THREE.Mesh(new THREE.SphereGeometry(0.75, 10, 8), plainMat(c)), polar(1.25, a, cy + 13.3)));
+  const wingGeo = new THREE.BufferGeometry(); wingGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 7.5, 2.2, 0, 6.5, -1.5, 0, 0, 0, 0, 6.5, -1.5, 0, 3.8, -2.6, 0], 3)); wingGeo.computeVertexNormals();
+  const wingM = plainMat(0x241a18);
+  for (let k = 0; k < 6; k++) {
+    const pivot = new THREE.Object3D(); pivot.position.set(0, cy + 10.5 + (k % 2) * 1.4, 0); pivot.rotation.y = -(Math.floor(k / 2) * 120 + 60) * DEG + (k % 2 ? 0.25 : -0.25);
+    const w = new THREE.Mesh(wingGeo, wingM); tag(w); pivot.add(w); scene.add(pivot); wings.push(w);
+  }
+  add(arcLine(1.8, -126, new THREE.LineBasicMaterial({ color: 0xe0bb64 })), 'path');
+  CTX = null;
+}
+
+/* ======================= journey path ======================= */
+let pathCurve, pathMat, pilgrim, pathArc = [];
+function buildPath() {
+  const pts = [];
+  D.path.forEach((w) => {
+    const p = posOf(w);
+    if (w.mode === 'flight' && pts.length) {
+      const prev = pts[pts.length - 1];
+      const a0 = Math.atan2(prev.p.z, prev.p.x) / DEG, r0 = Math.hypot(prev.p.x, prev.p.z), a1 = (w.a || 0) - 360, r1 = Math.hypot(p.x, p.z);
+      for (let k = 1; k < 28; k++) { const t = k / 28, rad = r0 + (r1 - r0) * t - Math.sin(Math.PI * t) * 9;
+        pts.push({ p: polar(rad, a0 + (a1 - a0) * t, prev.p.y + (p.y - prev.p.y) * t), c: prev.c + (w.c - prev.c) * t }); }
+    }
+    pts.push({ p, c: w.c, w });
+  });
+  PATH = pts;
+  pathCurve = new THREE.CatmullRomCurve3(pts.map((q) => q.p), false, 'centripetal');
+  const N = pts.length, DIV = 4000, lens = pathCurve.getLengths(DIV), total = lens[DIV];
+  pathArc = pts.map((_, i) => lens[Math.round((i / (N - 1)) * DIV)] / total);
+  pathMat = new THREE.ShaderMaterial({
+    uniforms: { uProg: { value: 0 }, uTime: { value: 0 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: `uniform float uProg; uniform float uTime; varying vec2 vUv;
+      void main(){ float done = step(vUv.x, uProg);
+        float dash = step(0.55, fract(vUv.x * 700.0));
+        vec3 c = mix(vec3(0.94,0.89,0.80), vec3(0.78,0.16,0.10), done);
+        float a = mix(0.55 * dash, 1.0, done);
+        if (a < 0.01) discard;
+        gl_FragColor = vec4(c, a); }`,
+    transparent: true, depthWrite: false,
+  });
+  const tube = new THREE.Mesh(new THREE.TubeGeometry(pathCurve, 2600, 0.32, 6, false), pathMat); tube.renderOrder = 2; scene.add(tube);
+  pilgrim = new THREE.Mesh(new THREE.OctahedronGeometry(1.3, 0), plainMat(0xe0bb64, { emissive: 0xb8892a, emissiveIntensity: 0.6 }));
+  pilgrim.add(new THREE.LineSegments(new THREE.EdgesGeometry(pilgrim.geometry), new THREE.LineBasicMaterial({ color: 0x1a120a })));
+  scene.add(pilgrim);
+}
+function arcAtCanto(c) {
+  if (c <= PATH[0].c) return 0;
+  for (let i = 0; i < PATH.length - 1; i++) { const a = PATH[i], b = PATH[i + 1];
+    if (c >= a.c && c <= b.c) { const t = b.c > a.c ? (c - a.c) / (b.c - a.c) : 1; return pathArc[i] + (pathArc[i + 1] - pathArc[i]) * t; } }
+  return 1;
+}
+function waypointIndexAt(c) { let k = 0; D.path.forEach((w, i) => { if (w.c <= c + 1e-6) k = i; }); return k; }
+
+/* ======================= markers (pixel icons on vellum roundels) ======================= */
+let markerMat, markerGeo, stems;
+function buildMarkers() {
+  const n = NODES.length, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), shape = new Float32Array(n), state = new Float32Array(n), size = new Float32Array(n), spr = new Float32Array(n);
+  NODES.forEach((nd, i) => { pos.set([nd.pos.x, nd.pos.y, nd.pos.z], i * 3); const k = KIND[nd.k]; col.set(k.ring, i * 3); shape[i] = k.shape; size[i] = nd.k === 'guardian' ? 1.1 : 1; spr[i] = PIX.index[nd.sprite]; });
+  markerGeo = new THREE.BufferGeometry();
+  markerGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  markerGeo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
+  markerGeo.setAttribute('aShape', new THREE.BufferAttribute(shape, 1));
+  markerGeo.setAttribute('aState', new THREE.BufferAttribute(state, 1));
+  markerGeo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  markerGeo.setAttribute('aSprite', new THREE.BufferAttribute(spr, 1));
+  const atlas = new THREE.CanvasTexture(PIX.canvas); atlas.magFilter = atlas.minFilter = THREE.NearestFilter; atlas.generateMipmaps = false;
+  markerMat = new THREE.ShaderMaterial({
+    uniforms: { uScale: { value: innerHeight * renderer.getPixelRatio() }, uDpr: { value: renderer.getPixelRatio() }, uTime: { value: 0 },
+      uIcons: { value: 1 }, uAtlas: { value: atlas }, uGrid: { value: new THREE.Vector2(PIX.COLS, PIX.ROWS) } },
+    vertexShader: `attribute vec3 aColor; attribute float aShape; attribute float aState; attribute float aSize; attribute float aSprite;
+      uniform float uScale; uniform float uDpr; uniform float uIcons; varying vec3 vColor; varying float vShape; varying float vState; varying float vSprite;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * mv;
+        vColor = aColor; vShape = aShape; vState = aState; vSprite = aSprite;
+        if (uIcons > 0.5) {
+          float want = clamp(aSize * uScale * 1.3 / -mv.z, 32.0 * uDpr, 84.0 * uDpr);
+          if (aState < 0.5) want *= 0.85; if (aState > 1.5) want *= 1.2; if (aState > 2.5) want *= 1.15;
+          float px = max(1.0, floor(want * 0.74 / 18.0 + 0.5));
+          gl_PointSize = px * 18.0 / 0.74; return;
+        }
+        float s = clamp(aSize * uScale * 0.9 / -mv.z, 12.0 * uDpr, 30.0 * uDpr);
+        if (aState < 0.5) s *= 0.8; if (aState > 1.5) s *= 1.3; if (aState > 2.5) s *= 1.2;
+        gl_PointSize = s; }`,
+    fragmentShader: `uniform float uTime; uniform float uIcons; uniform sampler2D uAtlas; uniform vec2 uGrid;
+      varying vec3 vColor; varying float vShape; varying float vState; varying float vSprite;
+      const vec3 VELLUM = vec3(0.94, 0.89, 0.80); const vec3 INK = vec3(0.10, 0.07, 0.04); const vec3 GOLD = vec3(0.88, 0.73, 0.39);
+      void main(){
+        vec2 pc = gl_PointCoord; float dd = length(pc - 0.5) * 2.0; bool sel = vState > 2.5; bool ahead = vState < 0.5;
+        if (uIcons > 0.5) {
+          vec2 q = (pc - 0.5) / 0.74 + 0.5;
+          if (q.x >= 0.0 && q.x <= 1.0 && q.y >= 0.0 && q.y <= 1.0) {
+            float col = mod(vSprite, uGrid.x), row = floor(vSprite / uGrid.x + 0.001);
+            vec4 t = texture2D(uAtlas, vec2((col + q.x) / uGrid.x, 1.0 - (row + q.y) / uGrid.y));
+            if (t.a > 0.5) { vec3 c = t.rgb; if (ahead) c = mix(c, vec3(dot(c, vec3(0.3, 0.59, 0.11))), 0.75) * 0.7; gl_FragColor = vec4(c, 1.0); return; }
+          }
+          if (dd > 0.99) discard;
+          if (dd > 0.93) { gl_FragColor = vec4(sel ? GOLD : INK, 1.0); return; }
+          if (dd > 0.82) { vec3 rc = sel ? mix(GOLD, vec3(1.0), 0.25 + 0.25 * sin(uTime * 5.0)) : vColor; gl_FragColor = vec4(ahead ? rc * 0.6 : rc, 1.0); return; }
+          gl_FragColor = vec4(ahead ? VELLUM * 0.55 : VELLUM, 0.94); return;
+        }
+        vec2 p = pc * 2.0 - 1.0; float d;
+        if (vShape < 0.5) d = length(p); else if (vShape < 1.5) d = abs(p.x) + abs(p.y); else if (vShape < 2.5) d = max(abs(p.x), abs(p.y)) * 1.08; else d = length(p);
+        if (sel && dd > 0.86 && dd < 0.98) { gl_FragColor = vec4(GOLD, 1.0); return; }
+        if (d > 0.8) discard;
+        if (d > 0.6) { gl_FragColor = vec4(VELLUM, 0.95); return; }
+        if (vShape > 2.5 && d < 0.3) { gl_FragColor = vec4(VELLUM, 0.9); return; }
+        gl_FragColor = vec4(ahead ? mix(vColor, vec3(0.4), 0.6) : vColor, 1.0); }`,
+    transparent: true, depthTest: false, depthWrite: false,
+  });
+  const pts = new THREE.Points(markerGeo, markerMat); pts.renderOrder = 10; pts.frustumCulled = false; scene.add(pts);
+  const sv = []; NODES.forEach((nd) => { if ((nd.h || 0) > 1.5 && nd.y == null) sv.push(nd.pos.x, nd.pos.y, nd.pos.z, nd.pos.x, nd.pos.y - nd.h, nd.pos.z); });
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sv, 3));
+  stems = new THREE.LineSegments(sg, new THREE.LineBasicMaterial({ color: 0xefe4cc, transparent: true, opacity: 0.4 })); scene.add(stems);
+}
+
+/* ======================= connections ======================= */
+const edgeObjs = [];
+function endpoint(id) { return NODE[id] ? NODE[id].pos : posOf({ lv: id, a: -125, r: 0.5 }); }
+function buildEdges() {
+  D.edges.forEach((e) => {
+    const a = endpoint(e.a), b = endpoint(e.b), d = a.distanceTo(b);
+    const mid = a.clone().lerp(b, 0.5), out = V(mid.x, 0, mid.z).normalize().multiplyScalar(d * 0.12);
+    const ctrl = mid.clone().add(out).add(V(0, Math.min(40, d * 0.35), 0));
+    const pts = new THREE.QuadraticBezierCurve3(a, ctrl, b).getPoints(Math.max(12, Math.round(d)));
+    const m = new THREE.LineBasicMaterial({ color: new THREE.Color((EDGE[e.t] || EDGE.echo)[0]), transparent: true, opacity: 0.3, depthTest: false });
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), m); line.renderOrder = 5; scene.add(line);
+    edgeObjs.push({ e, line, m });
+  });
+}
+function refreshEdges() {
+  edgeObjs.forEach(({ e, line, m }) => { const on = S.sel && (e.a === S.sel.id || e.b === S.sel.id);
+    line.visible = S.links || on; m.opacity = on ? 1 : (S.sel || S.selLevel ? 0.08 : 0.28); });
+}
+
+/* ======================= ambient particles ======================= */
+const systems = [];
+function buildParticles() {
+  const make = (lv, count, color, size, kind, top) => {
+    const L = LV[lv], arr = new Float32Array(count * 3), meta = [];
+    for (let i = 0; i < count; i++) { let a; do { a = rand() * 360; } while (inWedge(a)); meta.push({ a, rad: L.ri + rand() * (L.ro - L.ri), y: L.y + 0.5 + rand() * top, sp: 0.5 + rand() }); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    const p = new THREE.Points(g, new THREE.PointsMaterial({ color, size, transparent: true, opacity: 0.8, depthWrite: false })); add(p, lv);
+    systems.push({ L, g, meta, kind, top });
+  };
+  make('lust', 700, 0xe8dcc8, 0.35, 'swirl', 6);
+  make('gluttony', 700, 0xa8b8c4, 0.22, 'rain', 9);
+  make('sand', 500, 0xff7a2a, 0.5, 'flakes', 10);
+  tickParticles(0);
+}
+function tickParticles(dt) {
+  systems.forEach(({ L, g, meta, kind, top }) => {
+    const arr = g.attributes.position.array;
+    meta.forEach((m, i) => {
+      if (kind === 'swirl') { m.a += dt * 14 * m.sp; if (inWedge(m.a)) m.a += W1 - W0 + 4; m.y = L.y + 1 + (Math.sin((m.a + i) * DEG * 3) * 0.5 + 0.5) * top; }
+      else { m.y -= dt * (kind === 'rain' ? 9 : 1.6) * m.sp; if (m.y < L.y) m.y += top; }
+      arr[i * 3] = m.rad * Math.cos(m.a * DEG); arr[i * 3 + 1] = m.y; arr[i * 3 + 2] = m.rad * Math.sin(m.a * DEG);
+    });
+    g.attributes.position.needsUpdate = true;
+  });
+}
+
+/* ======================= state & HUD ======================= */
+function levelState(L) { const ci = S.curLevel.idx; return L.idx < ci ? 'passed' : L.idx === ci ? 'current' : 'ahead'; }
+function nodeMet(n) { return n.canto <= Math.floor(S.canto + 1e-6) || S.canto >= 35; }
+function refreshFloors() {
+  LEVELS.forEach((L) => {
+    const m = floorMats[L.id], om = outlineMats[L.id]; if (!m) return;
+    const st = S.focusLevel === L ? 'focus' : levelState(L);
+    const look = { passed: [0xffffff, 0x000000, 0, 0x1a120a, 0.6], current: [0xfff0c8, 0x6a4810, 0.35, 0xe0bb64, 1], ahead: [0x77706a, 0x000000, 0, 0x000000, 0.35], focus: [0xffd2c4, 0x5a1008, 0.35, 0xd0442f, 1] }[st];
+    m.color.setHex(look[0]); m.emissive.setHex(look[1]); m.emissiveIntensity = look[2];
+    if (om) { om.color.setHex(look[3]); om.userData.base = look[4]; if (!S.fadeLv) om.opacity = look[4]; }
+  });
+}
+function refreshMarkers() {
+  const st = markerGeo.attributes.aState;
+  NODES.forEach((n, i) => { let v = nodeMet(n) ? 1 : 0; if (S.hover === n) v = 2; if (S.sel === n) v = 3; st.array[i] = v; });
+  st.needsUpdate = true;
+}
+function setCanto(c, fromCode) {
+  S.canto = Math.max(1, Math.min(35, c));
+  const wi = waypointIndexAt(S.canto), w = D.path[wi];
+  S.curLevel = LV[w.lv];
+  pathMat.uniforms.uProg.value = arcAtCanto(S.canto);
+  pilgrim.position.copy(pathCurve.getPointAt(Math.min(1, pathMat.uniforms.uProg.value)));
+  if (fromCode !== 'input') $('#canto').value = S.canto;
+  const cn = Math.min(34, Math.floor(S.canto)), L = S.curLevel;
+  $('#readout').innerHTML = `<small>CANTO</small>${S.canto >= 35 ? 'FINIS' : ROMAN[cn]}`;
+  document.querySelectorAll('#ticks span').forEach((t, i) => t.classList.toggle('now', i + 1 === cn));
+  $('#itEyebrow').textContent = `Itinerarium · Canto ${ROMAN[cn]} · ${LATIN_NUM(L.group)}`;
+  $('#itTitle').textContent = L.la || L.name;
+  $('#itEn').textContent = `${L.name} · ${L.sin}`;
+  const nxt = D.path[wi + 1];
+  $('#itNow').innerHTML = S.canto >= 35 ? '<b>Finis</b> “Thence we came forth to rebehold the stars.” <span class="cite">XXXIV.139</span>' : `<b>Nunc</b> ${esc(w.label)}${nxt ? `<br><b>Deinde</b> ${esc(nxt.label)}` : ''}`;
+  refreshFloors(); refreshMarkers();
+  const key = cn + '|' + L.id + '|' + (S.canto >= 35);
+  if (key !== S.key || fromCode === true) { S.key = key; renderCounters(); renderMedallions(); if (S.tab !== 'map' && S.tab !== 'intro') renderDrawer(); if (S.sel || S.selLevel) renderDetail(); }
+}
+const icon = (name, px) => `<img class="pix" src="${PIX.url(name)}" width="${px}" height="${px}" alt="">`;
+function renderCounters() {
+  const lab = { soul: 'Animae', guardian: 'Custodes', place: 'Loca', event: 'Eventus' };
+  $('#counters').innerHTML = Object.keys(lab).map((k) => {
+    const all = NODES.filter((n) => n.k === k), met = all.filter(nodeMet).length;
+    return `<div class="ctr" title="${KIND[k].en}: met so far / total">${icon(PIX.resolve(null, k), 30)}<div><span class="lab">${lab[k]}</span>${met}<small> / ${all.length}</small></div></div>`;
+  }).join('');
+}
+function renderMedallions() {
+  const L = S.focusLevel || (S.sel && LV[S.sel.lv]) || S.curLevel, list = NODES.filter((n) => n.lv === L.id).slice(0, 12);
+  $('#medTitle').textContent = `In hoc circulo · ${list.filter(nodeMet).length} / ${list.length}`;
+  $('#medgrid').innerHTML = list.map((n) => `<button class="med ${nodeMet(n) ? '' : 'ahead'} ${S.sel === n ? 'sel' : ''}" style="--c:${KIND[n.k].css}" data-id="${n.id}" title="${esc(n.n)}" aria-label="${esc(n.n)}">${icon(n.sprite, 40)}</button>`).join('');
+}
+
+/* ---------- selection, fading, camera framing ---------- */
+function clearSel() { S.sel = null; S.selLevel = null; S.focusLevel = null; S.fadeLv = null; refreshAll(); }
+function refreshAll() { refreshMarkers(); refreshEdges(); refreshFloors(); renderDetail(); renderMedallions(); }
+function selectNode(n, fly = true) {
+  S.sel = n; S.selLevel = null; S.focusLevel = null; S.fadeLv = n.lv; refreshAll();
+  if (n && fly) frameNode(n);
+}
+function selectLevel(L, fly = true) {
+  S.sel = null; S.selLevel = L; S.focusLevel = L; S.fadeLv = L.id; refreshAll();
+  if (fly) frameLevel(L);
+}
+function linkName(id) { return NODE[id] ? NODE[id].n : LV[id] ? `${LV[id].name}` : id; }
+function renderDetail() {
+  const el = $('#detail');
+  if (!S.sel && !S.selLevel) { el.hidden = true; return; }
+  el.hidden = false;
+  if (S.sel) {
+    const n = S.sel, L = LV[n.lv], met = nodeMet(n), K = KIND[n.k];
+    el.innerHTML = `<button class="x" aria-label="Close">×</button>
+      <div class="dhead"><div class="roundel" style="--ring:${K.css}">${icon(n.sprite, 64)}</div>
+        <div><div class="eyebrow">${K.la} · ${K.en}</div><h2>${esc(n.n)}</h2>
+        <div class="where">${esc(L.la || L.name)} · <span class="cite">${esc(n.cite)}</span></div></div></div>
+      <div class="badges"><span class="badge ${n.conf}">${n.conf === 'text' ? 'stated in the text' : 'interpretive'}</span><span class="badge">${met ? 'encountered' : 'not yet reached'}</span>${n.sin ? `<span class="badge">${esc(n.sin)}</span>` : ''}</div>
+      <p class="note">${esc(n.note)}</p>
+      ${n.it || n.en ? `<div class="verse">${n.it ? `<div class="it">${esc(n.it)}</div>` : ''}${n.en ? `<div class="en">${esc(n.en)}</div>` : ''}</div>` : ''}
+      ${n.links.length ? `<div class="sect">Nexus · Connections</div><div class="links">${n.links.map(({ to, e }) => `<button class="linkbtn" data-go="${to}" style="--c:${(EDGE[e.t] || EDGE.echo)[0] === '#efe4cc' ? '#2a1d12' : (EDGE[e.t] || EDGE.echo)[0]}"><b>${NODE[to] ? icon(NODE[to].sprite, 22) : ''}${esc(linkName(to))}</b><span>${esc(e.note)} · <span class="cite">${esc(e.cite)}</span>${e.conf === 'interp' ? ' · interpretive' : ''}</span></button>`).join('')}</div>` : ''}
+      <div class="actions"><button class="btn" data-act="center">Look closer <span class="key">F</span></button><button class="btn" data-act="jump">Go to Canto ${ROMAN[n.canto]}</button></div>`;
+  } else {
+    const L = S.selLevel, list = NODES.filter((n) => n.lv === L.id), st = levelState(L);
+    el.innerHTML = `<button class="x" aria-label="Close">×</button>
+      <div class="eyebrow">${esc(LATIN_NUM(L.group))}</div><h2>${esc(L.la || L.name)}</h2>
+      <div class="where">${esc(L.name)} · <span class="cite">${esc(L.cite)}</span></div>
+      <div class="badges"><span class="badge">${st === 'passed' ? 'passed' : st === 'current' ? 'Dante is here' : 'not yet reached'}</span><span class="badge">${esc(L.sin)}</span></div>
+      ${list.length ? `<div class="sect">In hoc circulo</div><div class="links">${list.map((n) => `<button class="linkbtn" data-go="${n.id}" style="--c:${KIND[n.k].css}"><b>${icon(n.sprite, 22)}${esc(n.n)}</b><span class="cite">${esc(n.cite)}</span></button>`).join('')}</div>` : ''}
+      <div class="actions"><button class="btn" data-act="jump">Journey here</button></div>`;
+  }
+}
+$('#detail').addEventListener('click', (ev) => {
+  const go = ev.target.closest('[data-go]'), act = ev.target.closest('[data-act]');
+  if (ev.target.closest('.x')) { clearSel(); return; }
+  if (go) { const id = go.dataset.go; NODE[id] ? selectNode(NODE[id]) : LV[id] && selectLevel(LV[id]); return; }
+  if (act) {
+    if (act.dataset.act === 'center' && S.sel) frameNode(S.sel, true);
+    if (act.dataset.act === 'jump') {
+      const lvId = S.sel ? S.sel.lv : S.selLevel.id, w = D.path.find((p) => p.lv === lvId), first = w ? w.c : 1;
+      stopPlay(); setCanto(S.sel ? Math.min(35, Math.max(first + 0.001, S.sel.canto + 0.01)) : first + 0.001);
+    }
+  }
+});
+$('#medgrid').addEventListener('click', (ev) => { const b = ev.target.closest('[data-id]'); if (b) selectNode(NODE[b.dataset.id]); });
+
+/* ---------- drawer ---------- */
+function renderDrawer() {
+  const el = $('#drawer');
+  if (S.tab === 'map' || S.tab === 'intro') { el.hidden = true; return; }
+  el.hidden = false;
+  if (S.tab === 'codex') {
+    if (!el.querySelector('#q')) {
+      el.innerHTML = `<h3>Index</h3><div class="sub">Every soul, guardian, place and event, in the order Dante meets them.</div><input class="search" id="q" type="search" placeholder="Search names, notes or cantos…" autocomplete="off"><div class="rows" id="codexRows"></div>`;
+      el.querySelector('#q').addEventListener('input', renderCodexRows);
+    }
+    renderCodexRows();
+  } else if (S.tab === 'groups') {
+    let html = '<h3>Circuli</h3><div class="sub">The circles of Hell, from the rim to the center.</div><div class="rows">', lastG = '';
+    LEVELS.forEach((L) => {
+      if (L.group !== lastG) { html += `<div class="grouphead">${esc(LATIN_NUM(L.group))}</div>`; lastG = L.group; }
+      const st = levelState(L);
+      html += `<button class="row" data-lv="${L.id}"><span></span><span>${esc(L.la || L.name)}<br><i style="color:var(--ink-soft);font-size:14px">${esc(L.name)}</i></span><span class="state ${st}">${st === 'current' ? 'here' : st}</span></button>`;
+    });
+    el.innerHTML = html + '</div>';
+  } else if (S.tab === 'legend') {
+    el.innerHTML = `<h3>Clavis</h3><div class="sub">Key to the map.</div>
+      <div class="legend-grid">
+        <span class="swatch" style="background:#b8a184"></span><span>Lit stone: circles Dante has passed</span>
+        <span class="swatch" style="background:#e0bb64"></span><span>Gilded rim: where he is at this canto</span>
+        <span class="swatch" style="background:#4a443e"></span><span>In shadow: not yet reached</span>
+        <span class="swatch" style="background:#d0442f"></span><span>Rubric: the circle you chose</span>
+        ${Object.entries(KIND).map(([k, K]) => `<span class="ringsw" style="--c:${K.css}"></span><span>${K.la} · ${K.en}</span>`).join('')}
+        ${['pair', 'betray', 'cause', 'fate', 'echo'].map((k) => `<span class="swatch" style="background:${EDGE[k][0]};height:3px"></span><span>${EDGE[k][1]}</span>`).join('')}
+      </div>
+      <p class="legend-p"><b>Stated in the text</b> means Dante says it. <b>Interpretive</b> means it comes from tradition or commentators.</p>
+      <p class="legend-p">${esc(D.meta.scale)}</p>
+      ${D.meta.measures.map((m) => `<p class="legend-p"><span class="cite">${m.cite}</span> ${esc(m.text)}</p>`).join('')}
+      <p class="legend-p">The descent always turns left, except at the two right turns marked <i>dextrorsum</i>.</p>
+      <p class="legend-p">Points come from <span class="cite">inferno.json</span> and pictures from <span class="cite">sprites.json</span>. Edit either file to add, remove or redraw.</p>
+      <p class="legend-p" style="color:var(--ink-soft)">${esc(D.meta.text)}</p>`;
+  }
+}
+function renderCodexRows() {
+  const q = ($('#q').value || '').toLowerCase().trim(); let html = '', lastLv = '';
+  NODES.filter((n) => !q || (n.n + ' ' + n.note + ' ' + n.cite).toLowerCase().includes(q)).forEach((n) => {
+    if (n.lv !== lastLv) { html += `<div class="grouphead">${esc(LV[n.lv].la || LV[n.lv].name)}</div>`; lastLv = n.lv; }
+    html += `<button class="row ${nodeMet(n) ? '' : 'dim'}" data-id="${n.id}">${icon(n.sprite, 26)}<span>${esc(n.n)}</span><span class="cite">${esc(n.cite)}</span></button>`;
+  });
+  $('#codexRows').innerHTML = html || '<p class="legend-p">Nothing matches.</p>';
+}
+$('#drawer').addEventListener('click', (ev) => { const r = ev.target.closest('[data-id]'), l = ev.target.closest('[data-lv]'); if (!r && !l) return; if (narrow()) setTab('map'); if (r) selectNode(NODE[r.dataset.id]); if (l) selectLevel(LV[l.dataset.lv]); });
+function setTab(t) {
+  if (t === 'intro') { $('#incipit').hidden = false; return; }
+  S.tab = S.tab === t && t !== 'map' ? 'map' : t;
+  document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === S.tab)));
+  if (S.tab !== 'codex') $('#drawer').innerHTML = '';
+  renderDrawer();
+}
+function closeIncipit() { $('#incipit').hidden = true; try { localStorage.setItem('inferno-incipit', '1'); } catch (e) {} }
+
+function buildUI() {
+  document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
+  $('#ticks').innerHTML = ROMAN.slice(1).map((r, i) => `<span class="${(i + 1) % 5 === 0 || i === 0 || i === 33 ? 'five' : ''}">${r}</span>`).join('');
+  $('#canto').addEventListener('input', (e) => { stopPlay(); setCanto(parseFloat(e.target.value), 'input'); });
+  $('#btnPlay').addEventListener('click', togglePlay);
+  $('#btnFly').addEventListener('click', toggleFly);
+  $('#btnReset').addEventListener('click', () => resetView());
+  $('#btnIcons').addEventListener('click', toggleIcons);
+  $('#btnLinks').addEventListener('click', (e) => { S.links = !S.links; e.currentTarget.setAttribute('aria-pressed', S.links); refreshEdges(); });
+  $('#btnLabels').addEventListener('click', (e) => { S.labels = !S.labels; e.currentTarget.setAttribute('aria-pressed', S.labels); });
+  $('#btnEnter').addEventListener('click', closeIncipit);
+  $('#btnTour').addEventListener('click', () => { closeIncipit(); clearSel(); setCanto(1); startPlay(); });
+  const touch = matchMedia('(pointer: coarse)').matches;
+  $('#hints').innerHTML = touch ? '<span><b>1</b>drag to turn</span><span><b>2</b>pinch to zoom or pan</span>'
+    : '<span><b>Drag</b>turn the globe</span><span><b>Right-drag</b>pan</span><span><b>Scroll</b>zoom</span><span><b>F</b>look closer</span><span><b>G</b>fly (WASD, Q/E)</span><span><b>I</b>icons or dots</span><span><b>Esc</b>clear</span>';
+  refreshEdges();
+}
+
+/* ======================= camera ======================= */
+const cam = { target: V(0, -95, 0), az: 170 * DEG, el: 28 * DEG, dist: 520, g: { target: V(0, -95, 0), az: 170 * DEG, el: 28 * DEG, dist: 520 }, yaw: 0, pitch: 0, pos: V(0, 0, 0) };
+const keys = new Set();
+const narrow = () => innerWidth < 720;
+function setAz(a) { const d = ((a - cam.az) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI; cam.g.az = cam.az + d; }
+function frameNode(n) {
+  if (S.fly) toggleFly(); S.follow = false;
+  const L = LV[n.lv], rad = Math.hypot(n.pos.x, n.pos.z), w = Math.max(1.5, L.ro - L.ri);
+  cam.g.target.copy(n.pos);
+  if (L.kind === 'tunnel' || n.pos.y < CY - 1) { setAz(((W0 + W1) / 2) * DEG); cam.g.el = 8 * DEG; cam.g.dist = 70; return; }
+  if (rad > 2) setAz(Math.atan2(n.pos.z, n.pos.x) + Math.PI);   // stand on the funnel's axis side, looking out at the point
+  cam.g.el = 52 * DEG; cam.g.dist = Math.max(11, Math.min(48, w * 2.4 + 8));
+}
+function frameLevel(L) {
+  if (S.fly) toggleFly(); S.follow = false;
+  const ws = D.path.filter((w) => w.lv === L.id), p = ws.length ? posOf(ws[Math.floor(ws.length / 2)]) : posOf({ lv: L.id, a: 0, r: 0.5 });
+  if (L.kind === 'tunnel') { cam.g.target.set(0, -230, 0); setAz(((W0 + W1) / 2) * DEG); cam.g.el = 5 * DEG; cam.g.dist = 260; return; }
+  cam.g.target.copy(p); if (Math.hypot(p.x, p.z) > 2) setAz(Math.atan2(p.z, p.x) + Math.PI);
+  cam.g.el = 55 * DEG; cam.g.dist = Math.max(16, Math.min(95, (L.ro - L.ri) * 3 + 14));
+}
+function resetView(instant) {
+  if (S.fly) toggleFly(); S.follow = false;
+  cam.g.target.set(0, -78, 0); setAz(166 * DEG); cam.g.el = 33 * DEG; cam.g.dist = narrow() ? 760 : 470;
+  if (instant) { cam.target.copy(cam.g.target); cam.az = cam.g.az; cam.el = cam.g.el; cam.dist = cam.g.dist; }
+}
+function toggleFly() {
+  S.fly = !S.fly; $('#btnFly').setAttribute('aria-pressed', S.fly);
+  if (S.fly) { cam.pos.copy(camera.position); const dir = new THREE.Vector3(); camera.getWorldDirection(dir); cam.yaw = Math.atan2(dir.z, dir.x); cam.pitch = Math.asin(Math.max(-1, Math.min(1, dir.y))); }
+  else { const dir = flyDir(), d = 30; cam.g.target.copy(cam.pos).addScaledVector(dir, d); cam.target.copy(cam.g.target); cam.g.dist = cam.dist = d; cam.g.el = cam.el = -cam.pitch; cam.g.az = cam.az = Math.atan2(-dir.z, -dir.x); }
+}
+function bindControls(c) {
+  const ptrs = new Map(); let drag = null, moved = 0, pinch0 = 0, mid0 = null;
+  c.addEventListener('contextmenu', (e) => e.preventDefault());
+  c.addEventListener('pointerdown', (e) => {
+    c.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    drag = { btn: e.button, shift: e.shiftKey }; moved = 0; c.classList.add('dragging');
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); mid0 = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
+  });
+  c.addEventListener('pointermove', (e) => {
+    const prev = ptrs.get(e.pointerId); if (!prev) { hoverAt(e.clientX, e.clientY); return; }
+    const dx = e.clientX - prev.x, dy = e.clientY - prev.y; moved += Math.abs(dx) + Math.abs(dy); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; if (pinch0) zoomBy(pinch0 / d); pinch0 = d; pan(m.x - mid0.x, m.y - mid0.y); mid0 = m; return; }
+    if (S.fly) { cam.yaw += dx * 0.004; cam.pitch = Math.max(-1.5, Math.min(1.5, cam.pitch - dy * 0.004)); return; }
+    S.follow = false;
+    if (drag.btn === 2 || drag.btn === 1 || drag.shift) pan(dx, dy);
+    else { cam.g.az += dx * 0.006; cam.g.el = Math.max(-1.45, Math.min(1.45, cam.g.el + dy * 0.005)); }
+  });
+  const up = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; if (ptrs.size === 0) { c.classList.remove('dragging'); if (moved < 6) clickAt(e.clientX, e.clientY); drag = null; } };
+  c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
+  c.addEventListener('wheel', (e) => { e.preventDefault(); if (S.fly) { cam.pos.addScaledVector(flyDir(), -e.deltaY * 0.08); return; } zoomBy(Math.exp(e.deltaY * 0.0012)); }, { passive: false });
+  addEventListener('keydown', (e) => {
+    if (e.target.closest && e.target.closest('input, textarea')) return;
+    const k = e.key.toLowerCase();
+    if (!$('#incipit').hidden) { if (k === 'escape' || k === 'enter') closeIncipit(); return; }
+    if (k === ' ') { e.preventDefault(); togglePlay(); return; }
+    if (k === 'g') { toggleFly(); return; }
+    if (k === 'i') { toggleIcons(); return; }
+    if (k === 'r') { resetView(); return; }
+    if (k === 'f' && S.sel) { frameNode(S.sel); return; }
+    if (k === 'escape') { clearSel(); return; }
+    if (k === '[' || k === ',') setCanto(Math.floor(S.canto - 0.001));
+    if (k === ']' || k === '.') setCanto(Math.floor(S.canto) + 1);
+    keys.add(k);
+  });
+  addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+  addEventListener('blur', () => keys.clear());
+}
+function zoomBy(f) { S.follow = false; cam.g.dist = Math.max(4, Math.min(1200, cam.g.dist * f)); }
+function pan(dx, dy) {
+  S.follow = false;
+  const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0), upv = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1), s = cam.dist * 0.0016;
+  cam.g.target.addScaledVector(right, -dx * s).addScaledVector(upv, dy * s);
+}
+const flyDir = () => V(Math.cos(cam.pitch) * Math.cos(cam.yaw), Math.sin(cam.pitch), Math.cos(cam.pitch) * Math.sin(cam.yaw));
+function updateCamera(dt) {
+  const k = 1 - Math.pow(0.002, dt);
+  if (S.fly) {
+    const sp = (keys.has('shift') ? 90 : 30) * dt, f = flyDir(), r = V(-Math.sin(cam.yaw), 0, Math.cos(cam.yaw));
+    if (keys.has('w') || keys.has('arrowup')) cam.pos.addScaledVector(f, sp);
+    if (keys.has('s') || keys.has('arrowdown')) cam.pos.addScaledVector(f, -sp);
+    if (keys.has('d') || keys.has('arrowright')) cam.pos.addScaledVector(r, sp);
+    if (keys.has('a') || keys.has('arrowleft')) cam.pos.addScaledVector(r, -sp);
+    if (keys.has('e')) cam.pos.y += sp; if (keys.has('q')) cam.pos.y -= sp;
+    camera.position.copy(cam.pos); camera.lookAt(cam.pos.clone().add(f)); return;
+  }
+  if (keys.size) {
+    const sp = cam.dist * 0.9 * dt, fwd = V(-Math.cos(cam.az), 0, -Math.sin(cam.az)), rt = V(-fwd.z, 0, fwd.x);
+    if (keys.has('w') || keys.has('arrowup')) cam.g.target.addScaledVector(fwd, sp);
+    if (keys.has('s') || keys.has('arrowdown')) cam.g.target.addScaledVector(fwd, -sp);
+    if (keys.has('d') || keys.has('arrowright')) cam.g.target.addScaledVector(rt, sp);
+    if (keys.has('a') || keys.has('arrowleft')) cam.g.target.addScaledVector(rt, -sp);
+    if (keys.has('e')) cam.g.target.y += sp; if (keys.has('q')) cam.g.target.y -= sp;
+  }
+  if (S.follow) {
+    const L = S.curLevel, p = pilgrim.position; cam.g.target.copy(p);
+    if (L.kind === 'tunnel' || p.y < CY - 1) { setAz(((W0 + W1) / 2) * DEG); cam.g.el = 6 * DEG; cam.g.dist = 90; }
+    else { if (Math.hypot(p.x, p.z) > 3) setAz(Math.atan2(p.z, p.x) + Math.PI); cam.g.el = 46 * DEG; cam.g.dist = Math.max(18, Math.min(80, (L.ro - L.ri) * 3 + 16)); }
+  }
+  // keep the camera's focus inside the model
+  cam.g.target.y = Math.max(CY - RS - 60, Math.min(60, cam.g.target.y));
+  cam.target.lerp(cam.g.target, k); cam.az += (cam.g.az - cam.az) * k; cam.el += (cam.g.el - cam.el) * k; cam.dist += (cam.g.dist - cam.dist) * k;
+  const ce = Math.cos(cam.el);
+  camera.position.set(cam.target.x + cam.dist * ce * Math.cos(cam.az), cam.target.y + cam.dist * Math.sin(cam.el), cam.target.z + cam.dist * ce * Math.sin(cam.az));
+  camera.lookAt(cam.target);
+}
+
+/* ======================= fading ======================= */
+function updateFade(dt) {
+  const k = 1 - Math.pow(0.001, dt);
+  fadeables.forEach((o) => {
+    const m = o.material, lv = m.userData.lv, base = m.userData.base ?? 1;
+    let f = 1; if (S.fadeLv && lv !== 'path') f = lv === S.fadeLv ? 1 : lv === 'earth' ? (S.fadeLv === 'burrow' ? 0.85 : 0.07) : 0.14;
+    const target = base * f; if (Math.abs(m.opacity - target) < 0.002) { m.opacity = target; } else m.opacity += (target - m.opacity) * k;
+    const needT = m.opacity < 0.995 || base < 0.995;
+    if (m.transparent !== needT) { m.transparent = needT; m.needsUpdate = true; }
+    m.depthWrite = m.opacity > 0.95;
+  });
+}
+
+/* ======================= picking & labels ======================= */
+const tmp = new THREE.Vector3();
+function toScreen(p) { tmp.copy(p).project(camera); if (tmp.z > 1 || tmp.z < -1) return null; return { x: (tmp.x + 1) / 2 * innerWidth, y: (1 - tmp.y) / 2 * innerHeight, z: tmp.z }; }
+function pick(x, y) {
+  let best = null, bd = S.icons ? 30 : 18;
+  NODES.forEach((n) => { const s = toScreen(n.pos); if (!s) return; const d = Math.hypot(s.x - x, s.y - y) - (nodeMet(n) ? 2 : 0) - (S.fadeLv && n.lv === S.fadeLv ? 6 : 0); if (d < bd) { bd = d; best = n; } });
+  return best;
+}
+function hoverAt(x, y) { const n = pick(x, y); if (n !== S.hover) { S.hover = n; refreshMarkers(); $('#gl').classList.toggle('hovering', !!n); } }
+function clickAt(x, y) { const n = pick(x, y); if (n) selectNode(n); }
+const labelPool = new Map();
+function label(key, text, cls) {
+  let el = labelPool.get(key);
+  if (!el) { el = document.createElement('div'); $('#labels').appendChild(el); labelPool.set(key, el); el.addEventListener('click', () => { if (key.startsWith('L:')) selectLevel(LV[key.slice(2)]); }); }
+  if (el._t !== text) { el.innerHTML = text; el._t = text; }
+  if (el._c !== cls) { el.className = 'lbl ' + cls; el._c = cls; }
+  el._used = true; return el;
+}
+let placed = [];
+function place(el, s, dx = 10, dy = -10, force = false) {
+  if (el._mw === undefined || el._mt !== el._t) { el.style.display = ''; el._mw = el.offsetWidth; el._mh = el.offsetHeight; el._mt = el._t; }
+  const x = s.x + dx, y = s.y + dy - el._mh / 2, r = { x, y, w: el._mw, h: el._mh };
+  if (!force && placed.some((q) => x < q.x + q.w + 4 && x + r.w + 4 > q.x && y < q.y + q.h && y + r.h > q.y)) { el._used = false; return; }
+  placed.push(r); el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`; el.style.display = '';
+}
+function updateLabels() {
+  labelPool.forEach((el) => (el._used = false)); placed = [];
+  const ps = toScreen(pilgrim.position); if (ps) place(label('P', 'Dante & Virgil', 'pilgrim'), ps, 14, 18, true);
+  if (S.sel) { const s = toScreen(S.sel.pos); if (s) place(label('N:' + S.sel.id, esc(S.sel.n), 'sel'), s, 26, 0, true); }
+  if (S.labels) {
+    const seen = new Set();
+    LEVELS.forEach((L) => {
+      if (L.kind === 'tunnel' || L.kind === 'core') return;
+      const head = !seen.has(L.group); seen.add(L.group);
+      if (S.fadeLv && L.id !== S.fadeLv) return;
+      const anchor = polar(L.ro, W1 + 2, floorY(L) + 0.5), s = toScreen(anchor); if (!s) return;
+      const d = camera.position.distanceTo(anchor);
+      if (!head && d > Math.max(50, L.ro * 3.4)) return;
+      const st = S.focusLevel === L ? 'focus' : levelState(L);
+      let txt = `${esc(L.la || L.name)}`;
+      if (L.id === 'b1' && d > 160) txt = 'Malebolge';
+      if (L.id === 'caina' && d > 160) txt = 'Cocytus';
+      if (d < 260) txt += `<span class="en">${esc(L.name)}</span>`;
+      place(label('L:' + L.id, txt, 'level ' + st), s, 6, 0);
+    });
+    const near = Math.max(40, Math.min(90, cam.dist * 1.6));
+    NODES.filter((n) => n !== S.sel).filter((n) => n === S.hover || (S.sel && S.sel.links.some((l) => l.to === n.id)) || (cam.dist < 110 && (!S.fadeLv || n.lv === S.fadeLv) && camera.position.distanceTo(n.pos) < near)).slice(0, 40).forEach((n) => {
+      const s = toScreen(n.pos); if (!s) return;
+      place(label('N:' + n.id, esc(n.n), `${n === S.sel ? 'sel' : ''} ${nodeMet(n) ? '' : 'ahead'}`), s, 26, 0);
+    });
+    if (!S.fadeLv && cam.dist < 260) D.path.forEach((w, i) => { if (w.turn !== 'right') return; const s = toScreen(posOf(w)); if (s) place(label('T:' + i, `↱ dextrorsum · ${i < 30 ? 'IX.132' : 'XVII.31'}`, 'turn'), s, -70, 22); });
+  }
+  labelPool.forEach((el) => { if (!el._used) el.style.display = 'none'; });
+}
+
+/* ======================= playback ======================= */
+function toggleIcons() { S.icons = !S.icons; markerMat.uniforms.uIcons.value = S.icons ? 1 : 0; $('#btnIcons').setAttribute('aria-pressed', S.icons); }
+function togglePlay() { S.playing ? stopPlay() : startPlay(); }
+function startPlay() { if (S.canto >= 34.99) setCanto(1); S.playing = true; S.follow = true; if (S.fly) toggleFly(); $('#btnPlay').setAttribute('aria-pressed', 'true'); $('#playLbl').textContent = '❚❚ Pause'; }
+function stopPlay() { S.playing = false; S.follow = false; $('#btnPlay').setAttribute('aria-pressed', 'false'); $('#playLbl').textContent = '▶ Play the journey'; }
+
+/* ======================= loop ======================= */
+function loop() {
+  const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
+  if (S.playing) { setCanto(S.canto + dt * 0.3); if (S.canto >= 35) stopPlay(); }
+  updateCamera(dt); updateFade(dt);
+  if (!REDUCED) { tickParticles(dt); wings.forEach((w, i) => (w.rotation.x = Math.sin(t * 1.6 + i) * 0.35)); pilgrim.rotation.y = t * 1.2; }
+  markerMat.uniforms.uTime.value = t;
+  renderer.render(scene, camera);
+  updateLabels();
+  requestAnimationFrame(loop);
+}
+})();
+</script>

@@ -1,0 +1,13 @@
+{
+  "name": "inferno-map",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cutaway 3D model of Dante's Inferno with cited data points and pixel-sprite icons",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "build:vendor": "node tools/build.mjs --vendor",
+    "dev": "node tools/build.mjs && npx --yes serve dist -l 5173",
+    "preview": "npx --yes serve dist -l 4173"
+  }
+}
