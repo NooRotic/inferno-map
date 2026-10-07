@@ -46,6 +46,9 @@ button { font: inherit; color: inherit; }
 .lbl.level.focus { color: #fff; border-color: #d0442f; background: rgba(110,24,14,.85); }
 .lbl.turn { font-style: italic; color: var(--gold-hi); font-size: 13px; }
 .lbl.pilgrim { font-family: var(--font-display); font-size: 11px; letter-spacing: .14em; color: var(--gold-hi); }
+.lbl.level { border-left: 3px solid var(--band, #6a5a44); }
+.bandsw { width: 8px; height: 26px; border-radius: 2px; justify-self: center; }
+.strip { border-left: 6px solid var(--band, transparent); }
 .lbl.level { transform-origin: left center; transition: scale .12s, color .12s, background .12s, border-color .12s; }
 .lbl.level:hover { scale: 1.1; color: #fff; background: rgba(48,32,18,.92); border-bottom-color: var(--gold-hi); z-index: 4; }
 
@@ -358,6 +361,9 @@ const EDGE = { pair: ['#efe4cc', 'Bound together'], betray: ['#d0442f', 'Betraya
 const LATIN_NUM = (g) => g.replace(/Circle (\d+)/, (_, n) => 'Circulus ' + ROMAN[+n]).replace('Ante-Inferno', 'Ante-Infernum').replace('Above', 'Super Terram').replace('The Well', 'Puteus').replace('Center', 'Centrum').replace('Exit', 'Exitus');
 
 let PIX, D, LV = {}, LEVELS = [], NODES = [], NODE = {}, PATH = [];
+const BAND = {};   // sin bands (threshold ... treachery) from meta.bands, keyed by id
+const bandOf = (L) => BAND[L.band];
+const bandCss = (L) => (bandOf(L) ? bandOf(L).css : '#6a5a44');
 let renderer, scene, camera, clock;
 const S = { icons: true, canto: 10.3, curLevel: null, focusLevel: null, fadeLv: null, sel: null, selLevel: null, hover: null, playing: false, follow: false, fly: false, links: true, labels: true, tab: 'map', key: '' };
 
@@ -447,6 +453,7 @@ const latheW = (pts, m, seg = 140) => new THREE.Mesh(new THREE.LatheGeometry(pts
 /* ======================= init ======================= */
 function init(data, spriteSpec) {
   D = data;
+  (D.meta.bands || []).forEach((b) => (BAND[b.id] = { ...b, col: new THREE.Color(b.tint) }));
   PIX = buildPix(spriteSpec);
   LEVELS = D.levels.map((l, i) => ({ ...l, idx: i }));
   LEVELS.forEach((l) => (LV[l.id] = l));
@@ -821,7 +828,8 @@ function refreshFloors() {
     const m = floorMats[L.id], om = outlineMats[L.id]; if (!m) return;
     const st = S.focusLevel === L ? 'focus' : levelState(L);
     const look = { passed: [0xffffff, 0x000000, 0, 0x1a120a, 0.6], current: [0xfff0c8, 0x6a4810, 0.35, 0xe0bb64, 1], ahead: [0x77706a, 0x000000, 0, 0x000000, 0.35], focus: [0xffd2c4, 0x5a1008, 0.35, 0xd0442f, 1] }[st];
-    m.color.setHex(look[0]); m.emissive.setHex(look[1]); m.emissiveIntensity = look[2];
+    m.color.setHex(look[0]); if (st !== 'focus' && bandOf(L)) m.color.multiply(bandOf(L).col);   // band tint; the focus highlight stays untinted
+    m.emissive.setHex(look[1]); m.emissiveIntensity = look[2];
     if (om) { om.color.setHex(look[3]); om.userData.base = look[4]; if (!S.fadeLv) om.opacity = look[4]; }
   });
 }
@@ -874,6 +882,7 @@ function selectLevel(L, fly = true) {
   S.sel = null; S.selLevel = L; S.focusLevel = L; S.fadeLv = L.id; refreshAll();
   if (fly) frameLevel(L);
 }
+const bandBadge = (L) => (bandOf(L) ? `<span class="badge" style="border-color:${bandOf(L).css};border-left-width:4px">${esc(bandOf(L).la)} · ${esc(bandOf(L).name)}</span>` : '');
 function linkName(id) { return NODE[id] ? NODE[id].n : LV[id] ? `${LV[id].name}` : id; }
 function renderDetail() {
   const el = $('#detail');
@@ -885,7 +894,7 @@ function renderDetail() {
       <div class="dhead"><div class="roundel" style="--ring:${K.css}">${icon(n.sprite, 64)}</div>
         <div><div class="eyebrow">${K.la} · ${K.en}</div><h2>${esc(n.n)}</h2>
         <div class="where">${esc(L.la || L.name)} · <span class="cite">${esc(n.cite)}</span></div></div></div>
-      <div class="badges"><span class="badge ${n.conf}">${n.conf === 'text' ? 'stated in the text' : 'interpretive'}</span><span class="badge">${met ? 'encountered' : 'not yet reached'}</span>${n.sin ? `<span class="badge">${esc(n.sin)}</span>` : ''}</div>
+      <div class="badges"><span class="badge ${n.conf}">${n.conf === 'text' ? 'stated in the text' : 'interpretive'}</span><span class="badge">${met ? 'encountered' : 'not yet reached'}</span>${bandBadge(L)}${n.sin ? `<span class="badge">${esc(n.sin)}</span>` : ''}</div>
       <p class="note">${esc(n.note)}</p>
       ${n.it || n.en ? `<div class="verse">${n.it ? `<div class="it">${esc(n.it)}</div>` : ''}${n.en ? `<div class="en">${esc(n.en)}</div>` : ''}</div>` : ''}
       ${n.links.length ? `<div class="sect">Nexus · Connections</div><div class="links">${n.links.map(({ to, e }) => `<button class="linkbtn" data-go="${to}" style="--c:${(EDGE[e.t] || EDGE.echo)[0] === '#efe4cc' ? '#2a1d12' : (EDGE[e.t] || EDGE.echo)[0]}"><b>${NODE[to] ? icon(NODE[to].sprite, 22) : ''}${esc(linkName(to))}</b><span>${esc(e.note)} · <span class="cite">${esc(e.cite)}</span>${e.conf === 'interp' ? ' · interpretive' : ''}</span></button>`).join('')}</div>` : ''}
@@ -895,7 +904,7 @@ function renderDetail() {
     el.innerHTML = `<button class="x" aria-label="Close">×</button>
       <div class="eyebrow">${esc(LATIN_NUM(L.group))}</div><h2>${esc(L.la || L.name)}</h2>
       <div class="where">${esc(L.name)} · <span class="cite">${esc(L.cite)}</span></div>
-      <div class="badges"><span class="badge">${st === 'passed' ? 'passed' : st === 'current' ? 'Dante is here' : 'not yet reached'}</span><span class="badge">${esc(L.sin)}</span></div>
+      <div class="badges"><span class="badge">${st === 'passed' ? 'passed' : st === 'current' ? 'Dante is here' : 'not yet reached'}</span><span class="badge">${esc(L.sin)}</span>${bandBadge(L)}</div>
       ${list.length ? `<div class="sect">In hoc circulo</div><div class="links">${list.map((n) => `<button class="linkbtn" data-go="${n.id}" style="--c:${KIND[n.k].css}"><b>${icon(n.sprite, 22)}${esc(n.n)}</b><span class="cite">${esc(n.cite)}</span></button>`).join('')}</div>` : ''}
       <div class="actions"><button class="btn" data-act="jump">Journey here</button></div>`;
   }
@@ -930,7 +939,7 @@ function renderDrawer() {
     LEVELS.forEach((L) => {
       if (L.group !== lastG) { html += `<div class="grouphead">${esc(LATIN_NUM(L.group))}</div>`; lastG = L.group; }
       const st = levelState(L);
-      html += `<button class="row" data-lv="${L.id}"><span></span><span>${esc(L.la || L.name)}<br><i style="color:var(--ink-soft);font-size:14px">${esc(L.name)}</i></span><span class="state ${st}">${st === 'current' ? 'here' : st}</span></button>`;
+      html += `<button class="row" data-lv="${L.id}"><span class="bandsw" title="${bandOf(L) ? esc(bandOf(L).name) : ''}" style="background:${bandCss(L)}"></span><span>${esc(L.la || L.name)}<br><i style="color:var(--ink-soft);font-size:14px">${esc(L.name)}</i></span><span class="state ${st}">${st === 'current' ? 'here' : st}</span></button>`;
     });
     el.innerHTML = html + '</div>';
   } else if (S.tab === 'legend') {
@@ -940,6 +949,7 @@ function renderDrawer() {
         <span class="swatch" style="background:#e0bb64"></span><span>Gilded rim: where he is at this canto</span>
         <span class="swatch" style="background:#4a443e"></span><span>In shadow: not yet reached</span>
         <span class="swatch" style="background:#d0442f"></span><span>Rubric: the circle you chose</span>
+        ${(D.meta.bands || []).map((b) => `<span class="swatch" style="background:${b.css}"></span><span>${esc(b.la)} · ${esc(b.name)}: floor tint, label edge</span>`).join('')}
         ${Object.entries(KIND).map(([k, K]) => `<span class="ringsw" style="--c:${K.css}"></span><span>${K.la} · ${K.en}</span>`).join('')}
         ${['pair', 'betray', 'cause', 'fate', 'echo'].map((k) => `<span class="swatch" style="background:${EDGE[k][0]};height:3px"></span><span>${EDGE[k][1]}</span>`).join('')}
       </div>
@@ -1134,6 +1144,7 @@ function hoverAt(x, y) { const n = pick(x, y); if (n !== S.hover) { S.hover = n;
 function renderStrip() {
   const el = $('#strip'), n = S.hover, L = !n && S.hoverLv;
   if (!n && !L) { el.classList.remove('on'); return; }
+  el.style.setProperty('--band', bandCss(n ? LV[n.lv] : L));
   if (n) {
     el.innerHTML = `${icon(n.sprite, 30)}<span class="nm">${esc(n.n)}</span><span class="cat">${esc(KIND[n.k].en)} · ${esc(n.sin || LV[n.lv].sin)}</span><span class="desc">${esc(n.note)}</span><span class="cite">${esc(n.cite)}</span>`;
   } else {
@@ -1147,7 +1158,7 @@ const labelPool = new Map();
 function label(key, text, cls) {
   let el = labelPool.get(key);
   if (!el) { el = document.createElement('div'); $('#labels').appendChild(el); labelPool.set(key, el); el.addEventListener('click', () => { if (key.startsWith('L:')) selectLevel(LV[key.slice(2)]); });
-    if (key.startsWith('L:')) { el.addEventListener('mouseenter', () => { S.hoverLv = LV[key.slice(2)]; renderStrip(); }); el.addEventListener('mouseleave', () => { S.hoverLv = null; renderStrip(); }); } }
+    if (key.startsWith('L:')) { el.style.setProperty('--band', bandCss(LV[key.slice(2)])); el.addEventListener('mouseenter', () => { S.hoverLv = LV[key.slice(2)]; renderStrip(); }); el.addEventListener('mouseleave', () => { S.hoverLv = null; renderStrip(); }); } }
   if (el._t !== text) { el.innerHTML = text; el._t = text; }
   if (el._c !== cls) { el.className = 'lbl ' + cls; el._c = cls; }
   el._used = true; return el;
