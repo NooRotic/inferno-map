@@ -54,6 +54,23 @@ button { font: inherit; color: inherit; }
 
 .lbl.earth { pointer-events: none; font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: .6em; color: var(--gold-hi); opacity: .92; text-shadow: 0 1px 3px #000, 0 0 12px #000; }
 
+/* ---------- depth gauge: a vertical slider on the left wall, coloured by sin band; desktop widths only ---------- */
+.gauge { display: none; }
+.gauge-bands { position: absolute; left: 11px; top: 9px; bottom: 9px; width: 12px; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px #000, 0 0 0 3px rgba(14,10,7,.7); }
+.gauge-bands i { position: absolute; left: 0; right: 0; background: var(--c); opacity: .85; }
+#depth { -webkit-appearance: none; appearance: none; position: absolute; inset: 0; width: 34px; height: 100%; margin: 0; padding: 0; background: transparent; writing-mode: vertical-lr; direction: rtl; cursor: ns-resize; }
+#depth::-webkit-slider-runnable-track { background: transparent; border: 0; }
+#depth::-moz-range-track { background: transparent; border: 0; }
+#depth::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 12px; border-radius: 3px; background: var(--gold-hi); border: 2px solid #1a120a; box-shadow: 0 1px 4px rgba(0,0,0,.7); }
+#depth::-moz-range-thumb { width: 26px; height: 8px; border-radius: 3px; background: var(--gold-hi); border: 2px solid #1a120a; }
+.depth-lbl { position: absolute; left: 40px; transform: translateY(-50%); white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .12s; z-index: 7;
+  background: var(--gold-hi); color: var(--ink); font-family: var(--font-display); font-size: 11px; font-weight: 600; letter-spacing: .08em; padding: 3px 8px; border-radius: 3px; box-shadow: 0 2px 8px rgba(0,0,0,.6); }
+.gauge.drag .depth-lbl, #depth:focus-visible ~ .depth-lbl { opacity: 1; }
+@media (min-width: 901px) {
+  .gauge { display: block; position: absolute; left: 12px; top: 74px; bottom: calc(var(--foot, 160px) + 12px); width: 34px; z-index: 5; }
+  #app .itin, #app #drawer { left: 56px; }   /* make room for the gauge; #app wins over the later base rules */
+}
+
 /* ---------- first-visit coach marks ---------- */
 #coach { position: absolute; inset: 0; z-index: 15; pointer-events: none; }
 .coach-tip { position: absolute; max-width: 230px; background: var(--gold-hi); color: var(--ink); font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: .06em; line-height: 1.3;
@@ -70,8 +87,8 @@ button { font: inherit; color: inherit; }
 .strip .cat { font-family: var(--font-display); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--rubric); flex: none; max-width: 32%; }
 .strip .desc { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.25; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 /* below ~1460px the top-centre slot collides with the itinerary and detail panels (376px + 640px strip + 406px), so the strip sits just above the controls, left of the medallions */
-@media (max-width: 1459px) { .strip { left: 16px; top: auto; bottom: calc(var(--foot, 160px) + 10px); width: min(640px, calc(100% - 408px)); transform: translateY(8px); } .strip.on { transform: none; } }
-@media (max-width: 900px) { .strip { width: min(640px, calc(100% - 32px)); } }
+@media (max-width: 1459px) { .strip { left: 56px; top: auto; bottom: calc(var(--foot, 160px) + 10px); width: min(640px, calc(100% - 448px)); transform: translateY(8px); } .strip.on { transform: none; } }
+@media (max-width: 900px) { .strip { left: 16px; width: min(640px, calc(100% - 32px)); } }
 @media (max-width: 720px) { .strip { display: none; } }
 
 /* ---------- vellum leaves ---------- */
@@ -235,6 +252,12 @@ button { font: inherit; color: inherit; }
   </header>
 
   <div id="strip" class="strip leaf" aria-hidden="true"></div>
+
+  <div id="gauge" class="gauge" role="group" aria-label="Camera depth">
+    <div class="gauge-bands" id="gaugeBands"></div>
+    <input type="range" id="depth" min="-125" max="8" step="0.1" value="-78" aria-label="Camera depth: drag to move the view down the funnel">
+    <output id="depthLbl" class="depth-lbl"></output>
+  </div>
 
   <section class="itin leaf" aria-live="polite">
     <div class="eyebrow" id="itEyebrow">Itinerarium</div>
@@ -1037,7 +1060,34 @@ function layoutTicks() {
   const keep = new Set(); order.forEach((t) => { if (fits(t)) keep.add(t); });
   ticks.forEach((t) => t.classList.toggle('nonum', !keep.has(t)));
 }
+/* depth gauge: bands from the levels' floor heights; the slider moves the camera's focus up and down the funnel axis */
+const GAUGE = { top: 8, bottom: -125, drag: false };
+function levelAtY(y) { let hit = LEVELS[0]; LEVELS.forEach((L) => { if (L.kind !== 'tunnel' && L.y >= y - 1e-6) hit = L; }); return hit; }
+function buildGauge() {
+  const span = GAUGE.top - GAUGE.bottom, segs = LEVELS.filter((L) => L.kind !== 'tunnel');
+  $('#gaugeBands').innerHTML = segs.map((L, i) => {
+    const y0 = Math.min(GAUGE.top, L.y), y1 = segs[i + 1] ? segs[i + 1].y : GAUGE.bottom;
+    return `<i style="top:${((GAUGE.top - y0) / span) * 100}%;height:${((y0 - y1) / span) * 100 + 0.2}%;--c:${bandCss(L)}"></i>`;
+  }).join('');
+  const g = $('#gauge'), r = $('#depth');
+  r.addEventListener('input', () => { S.follow = false; cam.g.target.y = +r.value; labelGauge(); });
+  r.addEventListener('pointerdown', () => { GAUGE.drag = true; g.classList.add('drag'); labelGauge(); });
+  const up = () => { GAUGE.drag = false; g.classList.remove('drag'); };
+  addEventListener('pointerup', up); addEventListener('pointercancel', up);
+}
+function labelGauge() {
+  const r = $('#depth'), y = +r.value, L = levelAtY(y), H = $('#gauge').clientHeight, f = (y - GAUGE.bottom) / (GAUGE.top - GAUGE.bottom);
+  const o = $('#depthLbl'); o.textContent = L.la || L.name; o.style.top = 9 + (1 - f) * (H - 18) + 'px';
+  r.setAttribute('aria-valuetext', `${L.name}, about ${Math.round(-y)} units below the surface`);
+}
+/* called every frame: follow the camera when the gauge isn't being dragged */
+function syncGauge() {
+  if (GAUGE.drag) return;
+  const r = $('#depth'), y = Math.max(GAUGE.bottom, Math.min(GAUGE.top, cam.target.y));
+  if (Math.abs(+r.value - y) > 0.05) { r.value = y; labelGauge(); }
+}
 function buildUI() {
+  buildGauge();
   document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
   buildTicks();
   $('#canto').addEventListener('input', (e) => { stopPlay(); setCanto(parseFloat(e.target.value), 'input'); });
@@ -1258,7 +1308,7 @@ function stopPlay() { S.playing = false; S.follow = false; $('#btnPlay').setAttr
 function loop() {
   const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
   if (S.playing) { setCanto(S.canto + dt * 0.3); if (S.canto >= 35) stopPlay(); }
-  updateCamera(dt); updateFade(dt);
+  updateCamera(dt); syncGauge(); updateFade(dt);
   if (!REDUCED) { tickParticles(dt); wings.forEach((w, i) => (w.rotation.x = Math.sin(t * 1.6 + i) * 0.35)); pilgrim.rotation.y = t * 1.2; }
   markerMat.uniforms.uTime.value = t;
   renderer.render(scene, camera);
