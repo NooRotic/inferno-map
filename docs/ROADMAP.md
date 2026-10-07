@@ -77,12 +77,14 @@ The desktop experience (900px and up) is done and live. Phones were deliberately
 | 900 and under | Gauge, medallion icons and counter labels are hidden; strip goes full width |
 | 720 and under | Strip, hints, brand and counters are hidden; itinerary card compacts; the detail card becomes a bottom sheet (max 58% high) |
 
-**Known gaps on touch:**
-- **No hover:** the strip never appears, so there is no quick way to read an icon without selecting it. A tap selects it and opens the bottom sheet, which is the only route.
-- **Depth gauge hidden under 901px:** nothing replaces it, so moving down the funnel means pan and pinch. It needs a touch version, for example a slimmer vertical bar on the right edge.
-- **Journey ticks:** 34 buttons across about 375px is roughly 11px apart, well under a usable tap size. Options: drop per-canto buttons and keep the slider plus tappable milestones.
-- **Coach marks:** the first-icon arrow depends on the medallions, which are hidden at 900px and under, so only the play arrow shows, and its text says "Click".
-- **Footer:** the controls wrap to several rows; `--foot` keeps things stacked but the result has not been looked at.
+**Done on the `feat/mobile-layout` branch (720px and under unless noted):**
+- Hamburger button replaces the tab row and opens a full-screen section menu; the current section name sits beside it.
+- Footer controls are compact (two rows) and only the milestone ticks are tappable; the slider covers the rest.
+- A slim depth gauge sits on the right edge (900px and under).
+- Coach marks say "Tap", skip the hidden medallions and point at the play button and the gauge instead.
+- Hover strip stays off touch on purpose: a tap selects an icon and opens the bottom sheet.
+
+**Still open on touch:** the itinerary card is large on a phone, the gauge tip overlaps it briefly, and nothing has been tried on a real device.
 
 **Untested anywhere:** iOS Safari (the vertical gauge relies on `writing-mode: vertical-lr` on a range input), Firefox, and any real device.
 

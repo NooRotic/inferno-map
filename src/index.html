@@ -71,6 +71,28 @@ button { font: inherit; color: inherit; }
   #app .itin, #app #drawer { left: 56px; }   /* make room for the gauge; #app wins over the later base rules */
 }
 
+/* ---------- phone menu: hamburger + full-screen section page; shown at 720px and under only ---------- */
+.burger, .curtab, #menu { display: none; }
+@media (max-width: 900px) {
+  .gauge { display: block; position: absolute; right: 6px; left: auto; top: 150px; bottom: calc(var(--foot, 160px) + 12px); width: 34px; z-index: 5; }
+  .gauge-bands { left: 11px; }
+  .depth-lbl { left: auto; right: 40px; }
+}
+@media (max-width: 720px) {
+  #app .tabs { display: none; }
+  .burger { display: flex; flex-direction: column; justify-content: center; gap: 5px; width: 44px; height: 40px; padding: 0 11px; background: rgba(14,10,7,.6); border: 1px solid #6a5a44; cursor: pointer; flex: none; }
+  .burger span { display: block; height: 2px; background: var(--gold-hi); }
+  .curtab { display: block; font-family: var(--font-display); font-size: 14px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-hi); }
+  #menu { position: absolute; inset: 0; z-index: 25; background: var(--bg); padding: calc(10px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); flex-direction: column; gap: 10px; overflow-y: auto; }
+  #menu:not([hidden]) { display: flex; }
+  .menu-head { display: flex; align-items: center; justify-content: space-between; font-family: var(--font-display); font-weight: 700; letter-spacing: .32em; color: var(--gold-hi); font-size: 18px; margin-bottom: 14px; }
+  .menu-x { background: none; border: 1px solid #6a5a44; color: var(--on-dark); font-size: 28px; line-height: 1; width: 44px; height: 40px; cursor: pointer; }
+  .menu-item { text-align: left; background: rgba(14,10,7,.6); border: 1px solid #4a3c2c; padding: 16px 18px; cursor: pointer; color: var(--on-dark); display: grid; gap: 4px; }
+  .menu-item b { font-family: var(--font-display); font-size: 20px; letter-spacing: .18em; text-transform: uppercase; font-weight: 600; }
+  .menu-item small { font-size: 15px; font-style: italic; color: var(--on-dark-soft); }
+  .menu-item.cur { border-color: var(--gold); } .menu-item.cur b { color: var(--gold-hi); }
+}
+
 /* ---------- first-visit coach marks ---------- */
 #coach { position: absolute; inset: 0; z-index: 15; pointer-events: none; }
 .coach-tip { position: absolute; max-width: 230px; background: var(--gold-hi); color: var(--ink); font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: .06em; line-height: 1.3;
@@ -232,6 +254,16 @@ button { font: inherit; color: inherit; }
   .readout { min-width: 92px; font-size: 19px; }
   .btn .key { display: none; }
   #incipit .leaf { padding: 22px 20px; }
+  /* phone pass: fit all five tabs, shrink the footer, make the ticks tappable */
+  .topbar { padding-inline: 10px; gap: 8px; }
+  .tab { padding: 6px 7px; font-size: 11px; letter-spacing: .08em; }
+  .bottom { padding-inline: 10px; gap: 6px; }
+  .ctrlrow { gap: 6px; }
+  .ctrlrow .btn { padding: 8px 9px; font-size: 11px; letter-spacing: .06em; min-height: 36px; }
+  .ctrlrow .spacer { display: none; }
+  .readout { order: 9; margin-left: auto; }
+  .tick:not(.ms) { pointer-events: none; }
+  .tick.ms { padding: 4px 9px; }
 }
 </style>
 
@@ -241,6 +273,8 @@ button { font: inherit; color: inherit; }
 
   <header class="topbar">
     <div class="brand">INFERNVS<small>Dante's Hell, placed from the poem</small></div>
+    <button class="burger" id="burger" aria-label="Menu" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button>
+    <div class="curtab" id="curTab">Mappa</div>
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" data-tab="map" aria-selected="true" title="Map">Mappa</button>
       <button class="tab" role="tab" data-tab="codex" aria-selected="false" title="Index of souls, guardians, places and events">Index</button>
@@ -250,6 +284,14 @@ button { font: inherit; color: inherit; }
     </nav>
     <div class="counters" id="counters"></div>
   </header>
+  <nav id="menu" aria-label="Sections" hidden>
+    <div class="menu-head"><span>INFERNVS</span><button class="menu-x" id="menuX" aria-label="Close menu">&times;</button></div>
+    <button class="menu-item" data-tab="map"><b>Mappa</b><small>The 3D cutaway of Hell</small></button>
+    <button class="menu-item" data-tab="codex"><b>Index</b><small>Every soul, guardian, place and event</small></button>
+    <button class="menu-item" data-tab="groups"><b>Circuli</b><small>The circles, in order</small></button>
+    <button class="menu-item" data-tab="legend"><b>Clavis</b><small>Key to the map</small></button>
+    <button class="menu-item" data-tab="intro"><b>Prooemium</b><small>The opening page</small></button>
+  </nav>
 
   <div id="strip" class="strip leaf" aria-hidden="true"></div>
 
@@ -1015,14 +1057,26 @@ function setTab(t) {
   document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === S.tab)));
   if (S.tab !== 'codex') $('#drawer').innerHTML = '';
   renderDrawer();
+  $('#curTab').textContent = TAB_NAME[S.tab] || 'Mappa';
 }
+/* phone menu */
+const TAB_NAME = { map: 'Mappa', codex: 'Index', groups: 'Circuli', legend: 'Clavis' };
+function setMenu(open) { $('#menu').hidden = !open; $('#burger').setAttribute('aria-expanded', String(open)); document.querySelectorAll('.menu-item').forEach((b) => b.classList.toggle('cur', b.dataset.tab === S.tab)); }
+$('#burger').addEventListener('click', () => setMenu(true));
+$('#menuX').addEventListener('click', () => setMenu(false));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#menu').hidden) setMenu(false); });
+document.querySelectorAll('.menu-item').forEach((b) => b.addEventListener('click', () => { const t = b.dataset.tab; setMenu(false); if (t !== 'intro' && t === S.tab) return; setTab(t); }));
 function closeIncipit(noCoach) { $('#incipit').hidden = true; try { localStorage.setItem('inferno-incipit', '1'); } catch (e) {} if (noCoach !== true) showCoach(); }
 /* one-time pointers at the first icon and the play button; any click or key dismisses them (add ?coach to the URL to replay) */
 function showCoach() {
   let seen = false; try { seen = localStorage.getItem('inferno-coach') === '1'; } catch (e) {}
   if (seen && !/[?&]coach\b/.test(location.search)) return;
   const el = $('#coach'); el.innerHTML = ''; el.hidden = false;
-  [['#medgrid .med', 'Click any icon to meet a soul, guardian or place'], ['#btnPlay', "Press play to follow Dante's journey"]].forEach(([sel, txt]) => {
+  const touch = innerWidth <= 900;   // medallions are hidden here; the depth gauge is on the right edge instead
+  (touch
+    ? [['#btnPlay', "Tap play to follow Dante's journey"], ['#depth', 'Drag to travel down the funnel']]
+    : [['#medgrid .med', 'Click any icon to meet a soul, guardian or place'], ['#btnPlay', "Press play to follow Dante's journey"]]
+  ).forEach(([sel, txt]) => {
     const t = document.querySelector(sel); if (!t || !t.offsetWidth) return;
     const r = t.getBoundingClientRect(), tip = document.createElement('div'); tip.className = 'coach-tip'; tip.textContent = txt; el.appendChild(tip);
     const x = Math.max(8, Math.min(innerWidth - tip.offsetWidth - 8, r.left + r.width / 2 - tip.offsetWidth / 2));
