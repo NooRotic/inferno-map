@@ -36,6 +36,28 @@ Ideas captured October 2026. None of this is built yet.
 
 S = about an hour, M = a few hours. **Whole set: roughly 2–3 focused sessions with Claude.** This is moderate work, well within what this setup handles.
 
+### Working plan for the tableaux (October 2026)
+
+**Status:** planned, in progress on `feat/tableaux`. Line numbers below come from the table above and the existing `waterfall` node; anything new is verified against Longfellow before it ships.
+
+**What exists:** rivers and blood are static level materials (`phlegethon` is a `blood`-kind ring at y = -64). Phlegethon Falls exists only as a data node (`waterfall`, XVI.91-105) with no geometry. `tickParticles()` runs two behaviours, `swirl` and `rain`. Level fading (passed, current, ahead) is handled in one place, so anything attached to a level inherits it.
+
+**Three layers per level**, all keyed to the level's own polar coordinates:
+1. **Surface**: the ring's material; scroll its texture offset for flowing blood, mud and water.
+2. **Actors**: small figures as instanced billboards using the existing sprite atlas, positioned by a function of time.
+3. **Effects**: particles, light flicker, mist, and one-shot events (Geryon rising).
+
+**Data-driven**: a `tableaux` block in `inferno.json` (level, sprite, count, cite, `conf`, behaviour) read by one runtime. Behaviours: `orbit`, `march` (with optional ping-pong and pause), `fall`, `bob`, `flicker`, `flow`. Staging is interpretive, so a scene is `conf: interp` unless the poem states the movement. The runtime carries over to Purgatorio.
+
+**Safeguards**: half the actor counts at 720px and under; scenes on faded or passed levels stop animating; respect `prefers-reduced-motion` and add a small Motion toggle; check the frame rate on a phone before the medium-effort scenes.
+
+**Order:**
+1. Runtime and the `tableaux` schema with the six behaviours.
+2. The waterfall (Phlegethon Falls, XVI): a curved ribbon from the sand's rim down to the first bolgia with a scrolling streak texture and mist; Geryon rising and the cord (XVII) as one-shot events triggered by the journey's canto.
+3. The weights-pushers of Circle 4 (VII.22-35): two groups on opposite arcs, meeting, pausing with a collision burst, reversing. The cut wedge hides one meeting point, so stage it at the cut face.
+4. The blood river with centaurs (XII): scrolling surface, bubbles, centaurs on the bank, souls at fixed depths with a small bob.
+5. The small items from the table in one batch. Cheap early wins using `march`: Bolgia 1 (two files in opposite directions, XVIII.25-39), Bolgia 4 (diviners walking backwards, heads twisted, XX), Bolgia 9 (marchers split by the sword demon, XXVIII).
+
 **Accuracy note**: there are no "wheels" in Circle 4. The hoarders and wasters push heavy weights around half-circles, collide, and reverse (VII.22-35). The wheel in that canto is Fortune's, in Virgil's speech (VII.67-96).
 
 ## 2. Rollover "torment cards"
@@ -59,7 +81,7 @@ Hover shows torment and contrapasso. Click opens the full folio: who, deed, quot
 
 - **Deep links**: `#farinata` opens straight to a point. The artifact can only pass plain `#id` anchors, so this fits.
 - **Verify the remaining quotes**: see the to-do list in RESEARCH.md.
-- **Sequels**: *Purgatorio*, a mountain of seven terraces already sitting at the antipode, and *Paradiso*, the celestial spheres. Both could reuse the same engine and data shape.
+- **Sequels** (early plan in `docs/PURGATORIO-PLAN.md`): *Purgatorio*, a mountain of seven terraces already sitting at the antipode, and *Paradiso*, the celestial spheres. Both could reuse the same engine and data shape.
 - **Ambient sound** (idea, October 2026): one looping, low-volume background track with a mute button, off until the visitor turns it on. The "Intra · Enter" click is a user gesture, so browsers will allow it to start. Later option: crossfade a different bed per sin band (wind in the Dark Wood, storm for Lust, ice creak for Treachery). Needs audio with a clear license, because the repo is public, and the files add to the Pages download.
 - **Narration**: optional per-canto audio clips or text-to-speech of the Longfellow lines. A talking or animated Dante figure was considered and left out: it needs art, a voice and lip-sync, and it competes with the quote cards.
 - **Mobile**: lower texture resolution and fewer instanced objects on small screens. The layout side is its own piece of work, written up in section 4 below.
