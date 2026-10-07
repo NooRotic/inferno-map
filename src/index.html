@@ -915,7 +915,8 @@ function tickParticles(dt) {
 /* ======================= tableaux: animated torment scenes (data: inferno.json "tableaux") ======================= */
 /* Each scene is one instanced billboard mesh tied to a level, so it fades with the level like everything else.
    how: march (walk the visible arc; speed in degrees/s, sign = direction), bob (fixed spots, rise and fall),
-        fall (drop from `top` to the floor and repeat), flicker (fixed spots, pulsing size), flow (scroll the level's floor texture; no sprites). */
+        fall (drop from `top` to the floor and repeat), flicker (fixed spots, pulsing size), flow (scroll the level's floor texture; no sprites),
+        cascade (a falling ribbon down the level's inner cliff, with mist), track (one sprite that follows `keys` [[canto, angle, radius, y], ...] as the journey moves; hidden outside them). */
 const tableaux = [], flows = [], spriteTex = {};
 const ARC = 360 - (W1 - W0);                                  // degrees of ring the cut wedge leaves visible
 const arcAngle = (u) => W1 + (((u % 1) + 1) % 1) * ARC;
@@ -926,16 +927,18 @@ function spriteTexture(name) {
   t.repeat.set(18 / W, 18 / H); t.offset.set(((i % PIX.COLS) * PIX.CELL) / W, 1 - (Math.floor(i / PIX.COLS) * PIX.CELL + 18) / H);   // the whole 18px cell, outline included
   return (spriteTex[name] = t);
 }
-const TABLEAU_HOW = ['march', 'bob', 'fall', 'flicker', 'flow'];
+const TABLEAU_HOW = ['march', 'bob', 'fall', 'flicker', 'flow', 'cascade', 'track'];
+const cascades = [];
 function buildTableaux(list) {
   const phone = innerWidth <= 720;
   (list || []).forEach((T) => {
     const L = LV[T.lv];
     if (!L) { console.warn('Skipping tableau with unknown level', T.id); return; }
     if (!TABLEAU_HOW.includes(T.how)) { console.warn('Skipping tableau with unknown behaviour', T.id, T.how); return; }
+    if (T.how === 'cascade') { buildCascade(T, L); return; }
     if (T.how === 'flow') { const fm = floorMats[T.lv]; if (fm && fm.map && T.flow) { fm.map.wrapS = fm.map.wrapT = THREE.RepeatWrapping; flows.push({ map: fm.map, dx: T.flow[0], dy: T.flow[1] }); } return; }
     if (!(T.sprite in PIX.index)) { console.warn('Skipping tableau with unknown sprite', T.id, T.sprite); return; }
-    const count = Math.max(1, Math.round((T.count || 8) * (phone ? 0.5 : 1))), size = T.size || 1.4;
+    const count = T.how === 'track' ? 1 : Math.max(1, Math.round((T.count || 8) * (phone ? 0.5 : 1))), size = T.size || 1.4;
     const mat = new THREE.MeshBasicMaterial({ map: spriteTexture(T.sprite), transparent: true, alphaTest: 0.4, side: THREE.DoubleSide });
     const inst = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), mat, count); inst.frustumCulled = false; add(inst, T.lv);
     const w = L.ro - L.ri, fixedRad = L.ro - (T.lane != null ? T.lane : 0.5) * w;
@@ -945,15 +948,55 @@ function buildTableaux(list) {
   });
   tickTableaux(0, true);
 }
+/* a cascade is a curved ribbon from the level's inner edge down to the next level's floor, with a scrolling streak texture and mist at the foot */
+function cascadeTexture() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = '#7a1410'; x.fillRect(0, 0, 64, 128);
+  for (let i = 0; i < 110; i++) {
+    const px = Math.floor(rand() * 64), py = Math.floor(rand() * 128), h = 8 + Math.floor(rand() * 40), k = rand();
+    x.fillStyle = k > 0.8 ? '#f4b8a8' : k > 0.4 ? '#d8483a' : '#a01c14';
+    x.fillRect(px, py, k > 0.7 ? 2 : 1, h); x.fillRect(px, py - 128, k > 0.7 ? 2 : 1, h);   // second copy so the streaks tile vertically
+  }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t;
+}
+function buildCascade(T, L) {
+  const next = LEVELS[L.idx + 1], top = L.y + 0.2, bot = (next ? floorY(next) : L.y - 20) + 0.2;
+  const rad = L.ri - 0.2, wd = T.width || 3.5, da = (wd / rad) * (180 / Math.PI), N = 8, pos = [], uv = [], idx = [];
+  for (let j = 0; j <= N; j++) { const a = T.a - da / 2 + (da * j) / N; pos.push(...polar(rad, a, top).toArray(), ...polar(rad, a, bot).toArray()); uv.push(j / N, 1, j / N, 0); }
+  for (let j = 0; j < N; j++) idx.push(2 * j, 2 * j + 1, 2 * j + 2, 2 * j + 1, 2 * j + 3, 2 * j + 2);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+  const map = cascadeTexture(); map.repeat.set(1, Math.max(1, Math.round((top - bot) / 10)));
+  add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map, transparent: true, opacity: 0.92, side: THREE.DoubleSide })), T.lv);
+  const n = Math.max(12, Math.round((T.mist || 36) * (innerWidth <= 720 ? 0.5 : 1))), arr = new Float32Array(n * 3), ph = [], off = [];
+  for (let i = 0; i < n; i++) { ph.push(rand()); off.push((rand() - 0.5) * wd * 1.2); }
+  const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+  const mist = add(new THREE.Points(mg, new THREE.PointsMaterial({ color: 0xff9a88, size: 0.9, transparent: true, opacity: 0.5, depthWrite: false })), T.lv);
+  cascades.push({ T, map, mg, mist, n, ph, off, rad, bot, speed: T.speed || 0.6 });
+}
 const _tb = new THREE.Object3D();
 function tickTableaux(t, force) {
   flows.forEach((f) => { f.map.offset.x = (f.dx * t) % 1; f.map.offset.y = (f.dy * t) % 1; });
+  cascades.forEach((c) => {
+    if (!force && c.mist.material.opacity < 0.1) return;
+    c.map.offset.y = (-c.speed * t) % 1;
+    const arr = c.mg.attributes.position.array;
+    for (let i = 0; i < c.n; i++) {
+      const u = (t * 0.6 + c.ph[i]) % 1, r = c.rad - 0.3 - u * 1.4, a = c.T.a + (c.off[i] / c.rad) * (180 / Math.PI) * (1 + u * 0.8);
+      arr[i * 3] = r * Math.cos(a * DEG); arr[i * 3 + 1] = c.bot + 0.3 + u * 4; arr[i * 3 + 2] = r * Math.sin(a * DEG);
+    }
+    c.mg.attributes.position.needsUpdate = true;
+  });
   tableaux.forEach((b) => {
     if (!force && b.inst.material.opacity < 0.2) return;       // on a level that has faded away: freeze
     const { T, L, inst, count, size, ph, ang, rad, y0 } = b, cam = camera.position;
     for (let i = 0; i < count; i++) {
       let a = ang[i], r = rad[i], y = y0, sc = size, dir = i % 2 ? 1 : -1;
-      if (T.how === 'march') {
+      if (T.how === 'track') {
+        const K = T.keys, c = S.canto;
+        if (c < K[0][0] || c > K[K.length - 1][0]) sc = 0;
+        else { let j = 0; while (j < K.length - 2 && c > K[j + 1][0]) j++; const k0 = K[j], k1 = K[j + 1], u = Math.min(1, Math.max(0, (c - k0[0]) / (k1[0] - k0[0]))), e = u * u * (3 - 2 * u);
+          a = k0[1] + (k1[1] - k0[1]) * e; r = k0[2] + (k1[2] - k0[2]) * e; y = k0[3] + (k1[3] - k0[3]) * e + Math.sin(t * 1.6) * 0.25; dir = Math.sign(k1[1] - k0[1]) || 1; }
+      } else if (T.how === 'march') {
         const sp = T.speed || 3; dir = Math.sign(sp); a = arcAngle(i / count + (sp / ARC) * t); r = b.fixedRad;
         if (T.lift) y += Math.abs(Math.sin(t * 5 + ph[i] * 6)) * T.lift;
       } else if (T.how === 'bob') y += (Math.sin(t * (T.rate || 1.5) + ph[i] * 6.28) * 0.5 + 0.5) * (T.lift || 0.4);
