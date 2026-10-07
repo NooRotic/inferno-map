@@ -46,3 +46,9 @@ Coordinates are polar around the funnel axis:
 ```
 
 Person mods stack (`crown, tiara, laurel, hood, helmet, horns, halo, wings, book, sword, frozen, flames, tomb, tar, muck, …`). `post` can be `flipFire`, `flipV`, `crossRot`, `statueBands`. Assign with a point's `icon` field; unknown names fall back to `kindDefaults`.
+
+## Scenes (`tableaux` in src/inferno.json)
+
+Animated scenes are data too. Each entry ties a behaviour to a level: `{ id, lv, sprite, how, node, count, lane, speed, size, cite, conf, note }`. One runtime in `src/index.html` (`buildTableaux`, `tickTableaux`) reads the list and draws each scene as an instanced billboard mesh, so it fades with its level like any other object. The behaviours are `march`, `bob`, `fall`, `flicker`, `flow` (scrolls the level's floor texture), `push` (two groups with a weight and an optional spark burst at the clash), `cascade` (a falling ribbon with mist) and `track` (a sprite that follows keyframes of [canto, angle, radius, height] as the journey moves). The header comment above `buildTableaux` documents the fields.
+
+A scene's `node` names an existing point: hovering or tapping a figure selects it, so the card explains the sin and punishment. A scene with no `node` opens its level's card. `conf` follows the same rule as nodes, and movement is staging, so `note` says what the poem states and what is the author's reading.
