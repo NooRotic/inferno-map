@@ -74,7 +74,7 @@ button { font: inherit; color: inherit; }
 /* ---------- phone menu: hamburger + full-screen section page; shown at 720px and under only ---------- */
 .burger, .curtab, #menu { display: none; }
 @media (max-width: 900px) {
-  .gauge { display: block; position: absolute; right: 6px; left: auto; top: 150px; bottom: calc(var(--foot, 160px) + 12px); width: 34px; z-index: 5; }
+  .gauge { display: block; position: absolute; right: 6px; left: auto; top: 150px; bottom: calc(max(var(--foot, 160px), var(--sheet, 0px)) + 12px); width: 34px; z-index: 5; }
   .gauge-bands { left: 11px; }
   .depth-lbl { left: auto; right: 40px; }
 }
@@ -256,7 +256,7 @@ button { font: inherit; color: inherit; }
   .itin.open .en { display: block; }
   .itin::after { content: ""; position: absolute; right: 14px; top: 50%; width: 7px; height: 7px; margin-top: -6px; border: solid var(--rubric); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .15s; }
   .itin.open::after { transform: rotate(-135deg); margin-top: -2px; }
-  #detail { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 58%; z-index: 8; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+  #detail { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 52%; z-index: 8; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
   #drawer { left: 16px; right: 16px; width: auto; top: calc(170px + env(safe-area-inset-top, 0px)); max-height: calc(100% - 350px); }
   .hints { display: none; }
   .readout { min-width: 92px; font-size: 19px; }
@@ -1278,6 +1278,17 @@ function updateCamera(dt) {
   const ce = Math.cos(cam.el);
   camera.position.set(cam.target.x + cam.dist * ce * Math.cos(cam.az), cam.target.y + cam.dist * Math.sin(cam.el), cam.target.z + cam.dist * ce * Math.sin(cam.az));
   camera.lookAt(cam.target);
+  applyViewOffset(k);
+}
+/* phones: slide the picture up so the point of interest sits in the gap between the title bar and the bottom sheet (or footer) */
+let viewOff = 0;
+function applyViewOffset(k) {
+  const phone = innerWidth <= 720, d = $('#detail'), sheet = phone && !d.hidden ? d.offsetHeight : 0;
+  document.documentElement.style.setProperty('--sheet', sheet + 'px');
+  const want = phone ? (Math.max(sheet, document.querySelector('.bottom').offsetHeight) - 110) / 2 : 0;
+  viewOff += (want - viewOff) * k;
+  if (!phone && Math.abs(viewOff) < 0.5) { viewOff = 0; if (camera.view && camera.view.enabled) camera.clearViewOffset(); return; }
+  camera.setViewOffset(innerWidth, innerHeight, 0, viewOff, innerWidth, innerHeight);
 }
 
 /* ======================= fading ======================= */
