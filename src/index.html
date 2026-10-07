@@ -425,7 +425,7 @@ function buildPix(spec) {
 'use strict';
 const $ = (s) => document.querySelector(s);
 const DEG = Math.PI / 180;
-const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches && !/[?&]motion/.test(location.search);   // ?motion forces animation on, for testing
 const ROMAN = ['', 'I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI','XXII','XXIII','XXIV','XXV','XXVI','XXVII','XXVIII','XXIX','XXX','XXXI','XXXII','XXXIII','XXXIV'];
 const romanToInt = (s) => { const m = { I: 1, V: 5, X: 10, L: 50 }; let t = 0; for (let i = 0; i < s.length; i++) { const a = m[s[i]], b = m[s[i + 1]] || 0; t += a < b ? -a : a; } return t; };
 const cantoOf = (cite) => { const m = /^([IVXL]+)/.exec(cite || ''); return m ? romanToInt(m[1]) : 1; };
@@ -560,6 +560,8 @@ function init(data, spriteSpec) {
   buildMarkers();
   buildEdges();
   buildParticles();
+  buildTableaux(D.tableaux);
+  if (/[?&]debug/.test(location.search)) setInterval(() => { document.documentElement.dataset.inf = JSON.stringify(tableaux.map((b) => { const m = new THREE.Matrix4(), v = new THREE.Vector3(); b.inst.getMatrixAt(0, m); v.setFromMatrixPosition(m); const sc = toScreen(v); return { id: b.T.id, n: b.count, op: +b.inst.material.opacity.toFixed(2), tr: b.inst.material.transparent, pos: v.toArray().map((x) => +x.toFixed(1)), scr: sc && [Math.round(sc.x), Math.round(sc.y)], rep: b.inst.material.map.repeat.toArray().map((x) => +x.toFixed(4)), off: b.inst.material.map.offset.toArray().map((x) => +x.toFixed(4)), y0: +b.y0.toFixed(1), rad: +b.fixedRad.toFixed(1), ring: [b.L.ri, b.L.ro, b.L.y] }; })); }, 500);   // dev only: ?debug mirrors tableau state into a data attribute
   buildUI();
   setCanto(S.canto, true);
   resetView(true);
@@ -907,6 +909,61 @@ function tickParticles(dt) {
       arr[i * 3] = m.rad * Math.cos(m.a * DEG); arr[i * 3 + 1] = m.y; arr[i * 3 + 2] = m.rad * Math.sin(m.a * DEG);
     });
     g.attributes.position.needsUpdate = true;
+  });
+}
+
+/* ======================= tableaux: animated torment scenes (data: inferno.json "tableaux") ======================= */
+/* Each scene is one instanced billboard mesh tied to a level, so it fades with the level like everything else.
+   how: march (walk the visible arc; speed in degrees/s, sign = direction), bob (fixed spots, rise and fall),
+        fall (drop from `top` to the floor and repeat), flicker (fixed spots, pulsing size), flow (scroll the level's floor texture; no sprites). */
+const tableaux = [], flows = [], spriteTex = {};
+const ARC = 360 - (W1 - W0);                                  // degrees of ring the cut wedge leaves visible
+const arcAngle = (u) => W1 + (((u % 1) + 1) % 1) * ARC;
+function spriteTexture(name) {
+  if (spriteTex[name]) return spriteTex[name];
+  const i = PIX.index[name], W = PIX.COLS * PIX.CELL, H = PIX.ROWS * PIX.CELL;
+  const t = new THREE.CanvasTexture(PIX.canvas); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
+  t.repeat.set(18 / W, 18 / H); t.offset.set(((i % PIX.COLS) * PIX.CELL) / W, 1 - (Math.floor(i / PIX.COLS) * PIX.CELL + 18) / H);   // the whole 18px cell, outline included
+  return (spriteTex[name] = t);
+}
+const TABLEAU_HOW = ['march', 'bob', 'fall', 'flicker', 'flow'];
+function buildTableaux(list) {
+  const phone = innerWidth <= 720;
+  (list || []).forEach((T) => {
+    const L = LV[T.lv];
+    if (!L) { console.warn('Skipping tableau with unknown level', T.id); return; }
+    if (!TABLEAU_HOW.includes(T.how)) { console.warn('Skipping tableau with unknown behaviour', T.id, T.how); return; }
+    if (T.how === 'flow') { const fm = floorMats[T.lv]; if (fm && fm.map && T.flow) { fm.map.wrapS = fm.map.wrapT = THREE.RepeatWrapping; flows.push({ map: fm.map, dx: T.flow[0], dy: T.flow[1] }); } return; }
+    if (!(T.sprite in PIX.index)) { console.warn('Skipping tableau with unknown sprite', T.id, T.sprite); return; }
+    const count = Math.max(1, Math.round((T.count || 8) * (phone ? 0.5 : 1))), size = T.size || 1.4;
+    const mat = new THREE.MeshBasicMaterial({ map: spriteTexture(T.sprite), transparent: true, alphaTest: 0.4, side: THREE.DoubleSide });
+    const inst = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), mat, count); inst.frustumCulled = false; add(inst, T.lv);
+    const w = L.ro - L.ri, fixedRad = L.ro - (T.lane != null ? T.lane : 0.5) * w;
+    const ph = [], ang = [], rad = [];
+    for (let i = 0; i < count; i++) { ph.push(rand()); ang.push(arcAngle(rand())); rad.push(T.lane != null ? fixedRad : L.ri + 0.3 + rand() * Math.max(0.1, w - 0.6)); }
+    tableaux.push({ T, L, inst, count, size, ph, ang, rad, y0: floorY(L) + 0.2 + size / 2, fixedRad });
+  });
+  tickTableaux(0, true);
+}
+const _tb = new THREE.Object3D();
+function tickTableaux(t, force) {
+  flows.forEach((f) => { f.map.offset.x = (f.dx * t) % 1; f.map.offset.y = (f.dy * t) % 1; });
+  tableaux.forEach((b) => {
+    if (!force && b.inst.material.opacity < 0.2) return;       // on a level that has faded away: freeze
+    const { T, L, inst, count, size, ph, ang, rad, y0 } = b, cam = camera.position;
+    for (let i = 0; i < count; i++) {
+      let a = ang[i], r = rad[i], y = y0, sc = size, dir = i % 2 ? 1 : -1;
+      if (T.how === 'march') {
+        const sp = T.speed || 3; dir = Math.sign(sp); a = arcAngle(i / count + (sp / ARC) * t); r = b.fixedRad;
+        if (T.lift) y += Math.abs(Math.sin(t * 5 + ph[i] * 6)) * T.lift;
+      } else if (T.how === 'bob') y += (Math.sin(t * (T.rate || 1.5) + ph[i] * 6.28) * 0.5 + 0.5) * (T.lift || 0.4);
+      else if (T.how === 'fall') { const top = T.top || 8; y = y0 + top - (((t * (T.fall || 4) + ph[i] * top) % top) + top) % top; }
+      else if (T.how === 'flicker') sc = size * (0.8 + 0.25 * Math.sin(t * (T.rate || 6) + ph[i] * 6.28));
+      const px = r * Math.cos(a * DEG), pz = r * Math.sin(a * DEG), yaw = Math.atan2(cam.x - px, cam.z - pz);
+      const tang = (-Math.sin(a * DEG)) * Math.cos(yaw) * dir + (-Math.cos(a * DEG)) * Math.sin(yaw) * dir;   // direction of travel against the camera's right-hand side
+      _tb.position.set(px, y, pz); _tb.rotation.set(0, yaw, 0); _tb.scale.set(sc * (tang < 0 ? -1 : 1), sc, 1); _tb.updateMatrix(); inst.setMatrixAt(i, _tb.matrix);
+    }
+    inst.instanceMatrix.needsUpdate = true;
   });
 }
 
@@ -1389,7 +1446,7 @@ function loop() {
   const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
   if (S.playing) { setCanto(S.canto + dt * 0.3); if (S.canto >= 35) stopPlay(); }
   updateCamera(dt); syncGauge(); updateFade(dt);
-  if (!REDUCED) { tickParticles(dt); wings.forEach((w, i) => (w.rotation.x = Math.sin(t * 1.6 + i) * 0.35)); pilgrim.rotation.y = t * 1.2; }
+  if (!REDUCED) { tickParticles(dt); tickTableaux(t); wings.forEach((w, i) => (w.rotation.x = Math.sin(t * 1.6 + i) * 0.35)); pilgrim.rotation.y = t * 1.2; }
   markerMat.uniforms.uTime.value = t;
   renderer.render(scene, camera);
   updateLabels();

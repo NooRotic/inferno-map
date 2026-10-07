@@ -492,5 +492,10 @@
     { "a": "farinata", "b": "brunetto", "t": "echo", "cite": "X.79-81, XV.61-72", "note": "Both prophesy Dante's exile" },
     { "a": "lucifer", "b": "purgatory", "t": "cause", "cite": "XXXIV.121-126", "note": "His fall pushed up the mountain" },
     { "a": "gran_rifiuto", "b": "boniface", "t": "cause", "cite": "III.58-60", "note": "Celestine's resignation made way for Boniface", "conf": "interp" }
+  ],
+  "tableaux": [
+    { "id": "b1-file-a", "lv": "b1", "sprite": "soul", "how": "march", "count": 16, "lane": 0.3, "speed": 4, "size": 1.3, "lift": 0.15, "cite": "XVIII.25-33", "conf": "text", "note": "Two files of the pandering and seduced, walking in opposite directions along the ditch; the poem states the opposed directions, the pace and spacing are staging." },
+    { "id": "b1-file-b", "lv": "b1", "sprite": "soul_blue", "how": "march", "count": 16, "lane": 0.7, "speed": -5, "size": 1.3, "lift": 0.15, "cite": "XVIII.25-33", "conf": "text", "note": "The opposite file, seen as 'coming toward us' in the poem." },
+    { "id": "b1-demons", "lv": "b1", "sprite": "demon_whip", "how": "bob", "count": 5, "lane": 0.5, "size": 1.7, "lift": 0.5, "rate": 3, "cite": "XVIII.35-39", "conf": "text", "note": "Horned demons with great whips lash the walkers; where they stand is staging." }
   ]
 }
