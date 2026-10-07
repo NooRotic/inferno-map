@@ -248,6 +248,14 @@ button { font: inherit; color: inherit; }
   .itin { padding: 10px 14px; }
   .itin .now { display: none; }
   .itin .t { font-size: 17px; }
+  /* collapsed to eyebrow + title; a tap opens the English line */
+  .itin { top: calc(58px + env(safe-area-inset-top, 0px)); padding: 8px 34px 8px 12px; cursor: pointer; }
+  .itin .eyebrow { font-size: 10px; letter-spacing: .1em; }
+  .itin .t { margin: 2px 0 0; }
+  .itin .en { display: none; margin-top: 2px; }
+  .itin.open .en { display: block; }
+  .itin::after { content: ""; position: absolute; right: 14px; top: 50%; width: 7px; height: 7px; margin-top: -6px; border: solid var(--rubric); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .15s; }
+  .itin.open::after { transform: rotate(-135deg); margin-top: -2px; }
   #detail { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 58%; z-index: 8; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
   #drawer { left: 16px; right: 16px; width: auto; top: calc(170px + env(safe-area-inset-top, 0px)); max-height: calc(100% - 350px); }
   .hints { display: none; }
@@ -1063,6 +1071,7 @@ function setTab(t) {
 const TAB_NAME = { map: 'Mappa', codex: 'Index', groups: 'Circuli', legend: 'Clavis' };
 function setMenu(open) { $('#menu').hidden = !open; $('#burger').setAttribute('aria-expanded', String(open)); document.querySelectorAll('.menu-item').forEach((b) => b.classList.toggle('cur', b.dataset.tab === S.tab)); }
 $('#burger').addEventListener('click', () => setMenu(true));
+document.querySelector('.itin').addEventListener('click', (e) => { if (innerWidth <= 720) e.currentTarget.classList.toggle('open'); });
 $('#menuX').addEventListener('click', () => setMenu(false));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#menu').hidden) setMenu(false); });
 document.querySelectorAll('.menu-item').forEach((b) => b.addEventListener('click', () => { const t = b.dataset.tab; setMenu(false); if (t !== 'intro' && t === S.tab) return; setTab(t); }));
