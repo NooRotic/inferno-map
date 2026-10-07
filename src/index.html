@@ -569,7 +569,7 @@ function init(data, spriteSpec) {
   buildEdges();
   buildParticles();
   buildTableaux(D.tableaux);
-  if (/[?&]debug/.test(location.search)) setInterval(() => { document.documentElement.dataset.inf = JSON.stringify(tableaux.map((b) => { const m = new THREE.Matrix4(), v = new THREE.Vector3(); b.inst.getMatrixAt(0, m); v.setFromMatrixPosition(m); const sc = toScreen(v); return { id: b.T.id, n: b.count, op: +b.inst.material.opacity.toFixed(2), tr: b.inst.material.transparent, pos: v.toArray().map((x) => +x.toFixed(1)), scr: sc && [Math.round(sc.x), Math.round(sc.y)], rep: b.inst.material.map.repeat.toArray().map((x) => +x.toFixed(4)), off: b.inst.material.map.offset.toArray().map((x) => +x.toFixed(4)), sp: b.sparks ? b.sparks.pts.visible : null, y0: +b.y0.toFixed(1), rad: +b.fixedRad.toFixed(1), ring: [b.L.ri, b.L.ro, b.L.y] }; })); }, 500);   // dev only: ?debug mirrors tableau state into a data attribute
+  if (/[?&]debug/.test(location.search)) setInterval(() => { document.documentElement.dataset.inf = JSON.stringify(tableaux.map((b) => { const m = new THREE.Matrix4(), v = new THREE.Vector3(); b.inst.getMatrixAt(0, m); v.setFromMatrixPosition(m); const sc = toScreen(v); return { id: b.T.id, n: b.count, op: +b.inst.material.opacity.toFixed(2), tr: b.inst.material.transparent, pos: v.toArray().map((x) => +x.toFixed(1)), scr: sc && [Math.round(sc.x), Math.round(sc.y)], rep: b.inst.material.map.repeat.toArray().map((x) => +x.toFixed(4)), off: b.inst.material.map.offset.toArray().map((x) => +x.toFixed(4)), sp: b.sparks ? b.sparks.pts.visible : null, on: (() => { for (let i = 0; i < b.count; i++) { if (!b.vis[i]) continue; v.set(b.pos[i * 3], b.pos[i * 3 + 1], b.pos[i * 3 + 2]); const q = toScreen(v); if (q && q.x > 0 && q.x < innerWidth && q.y > 0 && q.y < innerHeight) return [Math.round(q.x), Math.round(q.y)]; } return null; })(), y0: +b.y0.toFixed(1), rad: +b.fixedRad.toFixed(1), ring: [b.L.ri, b.L.ro, b.L.y] }; })); }, 500);   // dev only: ?debug mirrors tableau state into a data attribute
   buildUI();
   setCanto(S.canto, true);
   resetView(true);
@@ -964,7 +964,8 @@ function buildTableaux(list) {
       const pts = add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffd070, size: 0.6, transparent: true, opacity: 1, depthWrite: false })), T.lv); pts.visible = false;
       sparks = { pts, g, arr, vel, n };
     }
-    tableaux.push({ T, L, inst, winst, sparks, count, size, ph, ang, rad, y0: floorY(L) + 0.2 + size / 2, fixedRad });
+    if (T.node && !NODE[T.node]) console.warn('Tableau points at an unknown node', T.id, T.node);
+    tableaux.push({ T, L, inst, winst, sparks, count, size, ph, ang, rad, pos: new Float32Array(count * 3), vis: new Uint8Array(count), y0: floorY(L) + 0.2 + size / 2, fixedRad });
   });
   tickTableaux(0, true);
 }
@@ -991,7 +992,8 @@ function buildCascade(T, L) {
   for (let i = 0; i < n; i++) { ph.push(rand()); off.push((rand() - 0.5) * wd * 1.2); }
   const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(arr, 3));
   const mist = add(new THREE.Points(mg, new THREE.PointsMaterial({ color: 0xff9a88, size: 0.9, transparent: true, opacity: 0.5, depthWrite: false })), T.lv);
-  cascades.push({ T, map, mg, mist, n, ph, off, rad, bot, speed: T.speed || 0.6 });
+  const hits = [0, 0.33, 0.66, 1].map((k) => polar(rad, T.a, bot + (top - bot) * k));   // where a tap or hover counts as touching the falls
+  cascades.push({ T, L, map, mg, mist, n, ph, off, rad, bot, hits, speed: T.speed || 0.6 });
 }
 const _tb = new THREE.Object3D();
 function tickTableaux(t, force) {
@@ -1033,6 +1035,7 @@ function tickTableaux(t, force) {
       const px = r * Math.cos(a * DEG), pz = r * Math.sin(a * DEG), yaw = Math.atan2(cam.x - px, cam.z - pz);
       const tang = (-Math.sin(a * DEG)) * Math.cos(yaw) * dir + (-Math.cos(a * DEG)) * Math.sin(yaw) * dir;   // direction of travel against the camera's right-hand side
       _tb.position.set(px, y, pz); _tb.rotation.set(0, yaw, 0); _tb.scale.set(sc * (tang < 0 ? -1 : 1), sc, 1); _tb.updateMatrix(); inst.setMatrixAt(i, _tb.matrix);
+      b.pos[i * 3] = px; b.pos[i * 3 + 1] = y; b.pos[i * 3 + 2] = pz; b.vis[i] = sc > 0 ? 1 : 0;
     }
     inst.instanceMatrix.needsUpdate = true; if (b.winst) b.winst.instanceMatrix.needsUpdate = true;
     if (b.sparks) {   // a short spray where the two groups meet, once per cycle, as they stop
@@ -1307,7 +1310,7 @@ function buildUI() {
   $('#btnLabels').addEventListener('click', (e) => { S.labels = !S.labels; e.currentTarget.setAttribute('aria-pressed', S.labels); });
   $('#btnMotion').setAttribute('aria-pressed', S.motion);
   $('#btnMotion').addEventListener('click', (e) => { S.motion = !S.motion; e.currentTarget.setAttribute('aria-pressed', S.motion); try { localStorage.setItem('inferno-motion', S.motion ? '1' : '0'); } catch (err) {}
-    toast(S.motion ? 'Motion on: crowds march, rivers flow, the falls pour' : 'Motion off: crowds, rivers and the falls hold still'); });
+    toast(S.motion ? 'Motion on: crowds march, rivers flow, the falls pour. Tap a figure to see who they are and why' : 'Motion off: crowds, rivers and the falls hold still'); });
   $('#btnEnter').addEventListener('click', closeIncipit);
   $('#btnTour').addEventListener('click', () => { closeIncipit(true); clearSel(); setCanto(1); startPlay(); });
   const touch = matchMedia('(pointer: coarse)').matches;
@@ -1454,7 +1457,23 @@ function pick(x, y) {
   NODES.forEach((n) => { const s = toScreen(n.pos); if (!s) return; const d = Math.hypot(s.x - x, s.y - y) - (nodeMet(n) ? 2 : 0) - (S.fadeLv && n.lv === S.fadeLv ? 6 : 0); if (d < bd) { bd = d; best = n; } });
   return best;
 }
-function hoverAt(x, y) { const n = pick(x, y); if (n !== S.hover) { S.hover = n; refreshMarkers(); $('#gl').classList.toggle('hovering', !!n); renderStrip(); } }
+/* scenes (tableaux) can be pointed at too: a hit selects the node the scene names, or its level when it names none */
+const _sv = new THREE.Vector3();
+function sceneHit(x, y) {
+  let best = null, bd = 22;
+  tableaux.forEach((b) => {
+    if (b.inst.material.opacity < 0.3) return;                  // on a level that has faded away
+    for (let i = 0; i < b.count; i++) { if (!b.vis[i]) continue; _sv.set(b.pos[i * 3], b.pos[i * 3 + 1], b.pos[i * 3 + 2]); const s = toScreen(_sv); if (!s) continue; const d = Math.hypot(s.x - x, s.y - y); if (d < bd) { bd = d; best = b; } }
+  });
+  cascades.forEach((c) => { if (c.mist.material.opacity < 0.3) return; c.hits.forEach((v) => { const s = toScreen(v); if (!s) return; const d = Math.hypot(s.x - x, s.y - y); if (d < bd) { bd = d; best = c; } }); });
+  return best;
+}
+function sceneTarget(x, y) { const b = sceneHit(x, y); if (!b) return null; const n = b.T.node && NODE[b.T.node]; return n ? { n } : { L: b.L }; }
+function hoverAt(x, y) {
+  let n = pick(x, y), L = null;
+  if (!n) { const t = sceneTarget(x, y); if (t) { n = t.n || null; L = t.L || null; } }
+  if (n !== S.hover || L !== S.hoverLv) { S.hover = n; S.hoverLv = L; refreshMarkers(); $('#gl').classList.toggle('hovering', !!(n || L)); renderStrip(); }
+}
 /* hover strip: a node under the pointer wins over a level label */
 function renderStrip() {
   const el = $('#strip'), n = S.hover, L = !n && S.hoverLv;
@@ -1468,7 +1487,7 @@ function renderStrip() {
   }
   el.classList.add('on');
 }
-function clickAt(x, y) { const n = pick(x, y); if (n) selectNode(n); }
+function clickAt(x, y) { if (/[?&]debug/.test(location.search)) { const h = sceneHit(x, y); document.documentElement.dataset.click = JSON.stringify([Math.round(x), Math.round(y), !!pick(x, y), h ? h.T.id : null]); } const n = pick(x, y); if (n) { selectNode(n); return; } const t = sceneTarget(x, y); if (t) { if (t.n) selectNode(t.n); else selectLevel(t.L); } }
 const labelPool = new Map();
 function label(key, text, cls) {
   let el = labelPool.get(key);

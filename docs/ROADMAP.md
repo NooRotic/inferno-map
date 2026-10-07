@@ -38,7 +38,7 @@ S = about an hour, M = a few hours. **Whole set: roughly 2–3 focused sessions 
 
 ### Working plan for the tableaux (October 2026)
 
-**Status (October 2026):** steps 1-5 below are built on `feat/tableaux` (22 scenes in `inferno.json` `tableaux`; schema in `CLAUDE.md`). Also done: a footer Motion toggle (remembered; starts off when the OS asks for reduced motion) and a spark burst where the Circle 4 groups meet. Not yet done: a frame-rate check on a real phone, and the rest of the table (Lust sprites, Gluttony, Malebolge 3, Cocytus). Nothing is merged or deployed.
+**Status (October 2026):** steps 1-5 below are built on `feat/tableaux` (22 scenes in `inferno.json` `tableaux`; schema in `CLAUDE.md`). Also done: hovering or tapping a moving figure opens the card of the node its scene names (or the level's card), so the scenes explain themselves; a footer Motion toggle (remembered; starts off when the OS asks for reduced motion) and a spark burst where the Circle 4 groups meet. Not yet done: a frame-rate check on a real phone, and the rest of the table (Lust sprites, Gluttony, Malebolge 3, Cocytus). Nothing is merged or deployed.
 
 **Original status line:** planned, in progress on `feat/tableaux`. Line numbers below come from the table above and the existing `waterfall` node; anything new is verified against Longfellow before it ships.
 
