@@ -60,5 +60,6 @@ Hover shows torment and contrapasso. Click opens the full folio: who, deed, quot
 - **Deep links**: `#farinata` opens straight to a point. The artifact can only pass plain `#id` anchors, so this fits.
 - **Verify the remaining quotes**: see the to-do list in RESEARCH.md.
 - **Sequels**: *Purgatorio*, a mountain of seven terraces already sitting at the antipode, and *Paradiso*, the celestial spheres. Both could reuse the same engine and data shape.
-- **Narration**: optional per-canto audio clips or text-to-speech of the Longfellow lines.
+- **Ambient sound** (idea, October 2026): one looping, low-volume background track with a mute button, off until the visitor turns it on. The "Intra · Enter" click is a user gesture, so browsers will allow it to start. Later option: crossfade a different bed per sin band (wind in the Dark Wood, storm for Lust, ice creak for Treachery). Needs audio with a clear license, because the repo is public, and the files add to the Pages download.
+- **Narration**: optional per-canto audio clips or text-to-speech of the Longfellow lines. A talking or animated Dante figure was considered and left out: it needs art, a voice and lip-sync, and it competes with the quote cards.
 - **Mobile**: lower texture resolution and fewer instanced objects on small screens.
