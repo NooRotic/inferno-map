@@ -601,15 +601,17 @@ function scatter(count, lv, rMin, rMax, geo, m, hFn) {
 function buildLandmarks() {
   const stoneL = () => texMat('stone', 1, 1), rockM = () => texMat('rock', 1, 1);
   CTX = 'surface';
-  addAt(new THREE.Mesh(new THREE.ConeGeometry(12, 20, 10), texMat('earth', 2, 1)), polar(121, 98, YTOP + 10));
-  addAt(new THREE.Mesh(new THREE.SphereGeometry(2.4, 12, 8), plainMat(0xffe6a0, { emissive: 0xffc860, emissiveIntensity: 0.9 })), polar(121, 98, YTOP + 24));
+  const hillR = (LV.surface.ri + LV.surface.ro) / 2;   // the hill sits mid-ring; scaled to fit the narrower Dark Wood ring
+  addAt(new THREE.Mesh(new THREE.ConeGeometry(9.6, 16, 10), texMat('earth', 2, 1)), polar(hillR, 98, YTOP + 8));
+  addAt(new THREE.Mesh(new THREE.SphereGeometry(2.4, 12, 8), plainMat(0xffe6a0, { emissive: 0xffc860, emissiveIntensity: 0.9 })), polar(hillR, 98, YTOP + 20));
   const treeGeo = new THREE.ConeGeometry(1.2, 5.5, 6);
   { const L = LV.surface, inst = new THREE.InstancedMesh(treeGeo, plainMat(0x2c3a20), 220), o = new THREE.Object3D();
-    for (let i = 0; i < 220; i++) { const a = 103 + rand() * 30, rad = 104 + rand() * 28, s = 0.7 + rand() * 0.8; o.position.copy(polar(rad, a, YTOP + 2.75 * s)); o.scale.set(s, s, s); o.updateMatrix(); inst.setMatrixAt(i, o.matrix); }
+    for (let i = 0; i < 220; i++) { const a = 103 + rand() * 30, rad = L.ri + 1 + rand() * (L.ro - L.ri - 3), s = 0.7 + rand() * 0.8; o.position.copy(polar(rad, a, YTOP + 2.75 * s)); o.scale.set(s, s, s); o.updateMatrix(); inst.setMatrixAt(i, o.matrix); }
     add(inst); }
   CTX = 'vestibule';
-  [70.6, 73.4].forEach((a) => addAt(new THREE.Mesh(new THREE.BoxGeometry(1.5, 8, 1.5), stoneL()), polar(99.4, a, 4)));
-  const lintel = addAt(new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.3, 7.4), stoneL()), polar(99.4, 72, 8.5)); lintel.lookAt(0, 8.5, 0);
+  const gateR = LV.vestibule.ro - 0.6;
+  [70.6, 73.4].forEach((a) => addAt(new THREE.Mesh(new THREE.BoxGeometry(1.5, 8, 1.5), stoneL()), polar(gateR, a, 4)));
+  const lintel = addAt(new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.3, 7.4), stoneL()), polar(gateR, 72, 8.5)); lintel.lookAt(0, 8.5, 0);
   CTX = 'limbo';
   const cp = posOf({ lv: 'limbo', a: 36, r: 0.6 });
   for (let k = 0; k < 3; k++) addAt(new THREE.Mesh(new THREE.CylinderGeometry(3.6 - k, 3.6 - k, 1.6 + k * 1.2, 16, 1, true), stoneL()), V(cp.x, LV.limbo.y + (1.6 + k * 1.2) / 2, cp.z));
@@ -619,7 +621,7 @@ function buildLandmarks() {
   addAt(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.1, 8, 10), stoneL()), V(tp.x, LV.styx.y + 4, tp.z));
   addAt(new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 6), plainMat(0xff8030, { emissive: 0xff6010, emissiveIntensity: 1 })), V(tp.x, LV.styx.y + 8.5, tp.z));
   // walls of Dis
-  const wallR = 47.5, wy0 = LV.styx.y, wy1 = wy0 + 11;
+  const wallR = LV.styx.ri, wy0 = LV.styx.y, wy1 = wy0 + 11;
   add(latheW([[wallR, wy0], [wallR, wy1]], texMat('iron', 40, 2)));
   add(arcLine(wallR, wy1 + 0.7, new THREE.LineBasicMaterial({ color: 0xff5a20, transparent: true, opacity: 0.9 })));
   const merlon = new THREE.BoxGeometry(1.2, 1.3, 1.2), merM = texMat('iron', 1, 1);
@@ -636,8 +638,8 @@ function buildLandmarks() {
   CTX = 'wood';
   scatter(280, 'wood', 0.08, 0.92, new THREE.ConeGeometry(0.55, 3.4, 5), plainMat(0x2e281e), () => 0.6 + rand() * 0.9);
   CTX = 'sand';
-  const rv = addAt(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 3.4), plainMat(0x5a1010, { emissive: 0xb01a10, emissiveIntensity: 0.7 })), polar(31.5, -44, LV.sand.y + 0.25)); rv.lookAt(0, LV.sand.y + 0.25, 0);
-  const fall = addAt(new THREE.Mesh(new THREE.PlaneGeometry(2.6, 31), new THREE.MeshBasicMaterial({ color: 0xb01a10, transparent: true, opacity: 0.8, side: THREE.DoubleSide })), polar(29.85, -41, (LV.sand.y + LV.b1.y) / 2)); fall.lookAt(0, fall.position.y, 0);
+  const rv = addAt(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 3.4), plainMat(0x5a1010, { emissive: 0xb01a10, emissiveIntensity: 0.7 })), polar(LV.sand.ri + 1.5, -44, LV.sand.y + 0.25)); rv.lookAt(0, LV.sand.y + 0.25, 0);
+  const fall = addAt(new THREE.Mesh(new THREE.PlaneGeometry(2.6, 31), new THREE.MeshBasicMaterial({ color: 0xb01a10, transparent: true, opacity: 0.8, side: THREE.DoubleSide })), polar(LV.sand.ri - 0.15, -41, (LV.sand.y + LV.b1.y) / 2)); fall.lookAt(0, fall.position.y, 0);
   // Malebolge bridges, all broken over bolgia 6
   const spokes = [-25, -85]; for (let k = 0; k < 10; k++) spokes.push(-25 + k * 36);
   LEVELS.filter((l) => l.kind === 'bolgia').forEach((L) => {
@@ -651,7 +653,7 @@ function buildLandmarks() {
   });
   CTX = 'well';
   const gm = texMat('stone', 1, 2);
-  [-86, -110, -125, -150, -175, 125, 95, 55, 15, -30, -58].forEach((a) => { if (inWedge(a)) return; const p = polar(7.4, a, 0);
+  [-86, -110, -125, -150, -175, 125, 95, 55, 15, -30, -58].forEach((a) => { if (inWedge(a)) return; const p = polar(LV.well.ri - 0.6, a, 0);
     addAt(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.75, 21, 8), gm), V(p.x, LV.caina.y + 10.5, p.z));
     addAt(new THREE.Mesh(new THREE.SphereGeometry(0.75, 10, 8), gm), V(p.x, LV.caina.y + 21.6, p.z)); });
   CTX = 'core';

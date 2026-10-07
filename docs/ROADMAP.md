@@ -40,6 +40,8 @@ S = about an hour, M = a few hours. **Whole set: roughly 2–3 focused sessions 
 
 ## 2. Rollover "torment cards"
 
+**Status (October 2026):** the card is built as a strip under the header. Rolling over an icon or level label shows its name, sin, a line of description and the citation (touch screens skip it, since tapping already opens the side panel). What is left is the data below: once a node has `torment` and `contrapasso`, the strip should show them in place of the trimmed `note`.
+
 Hovering a soul or area shows a compact card. Proposed new fields in `inferno.json` nodes:
 
 ```json
