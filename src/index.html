@@ -1542,13 +1542,15 @@ function updateLabels() {
 /* ======================= playback ======================= */
 function toggleIcons() { S.icons = !S.icons; markerMat.uniforms.uIcons.value = S.icons ? 1 : 0; $('#btnIcons').setAttribute('aria-pressed', S.icons); }
 function togglePlay() { S.playing ? stopPlay() : startPlay(); }
+/* cantos per second while playing the journey; slower on touch widths, where the scenes are being watched up close (about 6 minutes end to end) */
+const playRate = () => (innerWidth <= 900 ? 0.1 : 0.3);
 function startPlay() { if (S.canto >= 34.99) setCanto(1); S.playing = true; S.follow = true; if (S.fly) toggleFly(); $('#btnPlay').setAttribute('aria-pressed', 'true'); $('#playLbl').textContent = '❚❚ Pause'; }
 function stopPlay() { S.playing = false; S.follow = false; $('#btnPlay').setAttribute('aria-pressed', 'false'); $('#playLbl').textContent = '▶ Play the journey'; }
 
 /* ======================= loop ======================= */
 function loop() {
   const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
-  if (S.playing) { setCanto(S.canto + dt * 0.3); if (S.canto >= 35) stopPlay(); }
+  if (S.playing) { setCanto(S.canto + dt * playRate()); if (S.canto >= 35) stopPlay(); }
   updateCamera(dt); syncGauge(); updateFade(dt);
   if (S.motion) { tickParticles(dt); tickTableaux(t); wings.forEach((w, i) => (w.rotation.x = Math.sin(t * 1.6 + i) * 0.35)); pilgrim.rotation.y = t * 1.2; }
   markerMat.uniforms.uTime.value = t;
