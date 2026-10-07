@@ -62,4 +62,30 @@ Hover shows torment and contrapasso. Click opens the full folio: who, deed, quot
 - **Sequels**: *Purgatorio*, a mountain of seven terraces already sitting at the antipode, and *Paradiso*, the celestial spheres. Both could reuse the same engine and data shape.
 - **Ambient sound** (idea, October 2026): one looping, low-volume background track with a mute button, off until the visitor turns it on. The "Intra · Enter" click is a user gesture, so browsers will allow it to start. Later option: crossfade a different bed per sin band (wind in the Dark Wood, storm for Lust, ice creak for Treachery). Needs audio with a clear license, because the repo is public, and the files add to the Pages download.
 - **Narration**: optional per-canto audio clips or text-to-speech of the Longfellow lines. A talking or animated Dante figure was considered and left out: it needs art, a voice and lip-sync, and it competes with the quote cards.
-- **Mobile**: lower texture resolution and fewer instanced objects on small screens.
+- **Mobile**: lower texture resolution and fewer instanced objects on small screens. The layout side is its own piece of work, written up in section 4 below.
+
+## 4. Next session: mobile pass (handoff, October 2026)
+
+The desktop experience (900px and up) is done and live. Phones were deliberately left for their own pass; here is what is known going in.
+
+**How the layout is built:** absolutely positioned panels with media queries at 1459, 1100, 900 and 720px. `--foot` holds the measured footer height, and the medallions and hover strip stack above it.
+
+| Width | What changes today |
+|---|---|
+| 1460+ | Hover strip at the top centre |
+| 901-1459 | Strip moves to the bottom left; depth gauge on the left wall; itinerary and Circuli cards shift 40px right to clear it |
+| 900 and under | Gauge, medallion icons and counter labels are hidden; strip goes full width |
+| 720 and under | Strip, hints, brand and counters are hidden; itinerary card compacts; the detail card becomes a bottom sheet (max 58% high) |
+
+**Known gaps on touch:**
+- **No hover:** the strip never appears, so there is no quick way to read an icon without selecting it. A tap selects it and opens the bottom sheet, which is the only route.
+- **Depth gauge hidden under 901px:** nothing replaces it, so moving down the funnel means pan and pinch. It needs a touch version, for example a slimmer vertical bar on the right edge.
+- **Journey ticks:** 34 buttons across about 375px is roughly 11px apart, well under a usable tap size. Options: drop per-canto buttons and keep the slider plus tappable milestones.
+- **Coach marks:** the first-icon arrow depends on the medallions, which are hidden at 900px and under, so only the play arrow shows, and its text says "Click".
+- **Footer:** the controls wrap to several rows; `--foot` keeps things stacked but the result has not been looked at.
+
+**Untested anywhere:** iOS Safari (the vertical gauge relies on `writing-mode: vertical-lr` on a range input), Firefox, and any real device.
+
+**How to test here:** the in-app browser's `resize_window` mobile preset (375x812) switches to a touch user agent, though clicks still arrive as mouse events. The page only draws while the pane is rendered, so take a screenshot before reading label positions.
+
+**Still open from the same review:** link preview tags (no `og:image` or Twitter card yet, and the page title still says "Inferno Tactical Map"), README screenshots that predate the bands, gauge and wider rings, and header tabs clipping at about 800px wide.
