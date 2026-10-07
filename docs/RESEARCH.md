@@ -55,6 +55,8 @@ Fact-check pass on 2026-10-05, run by a separate checking agent. Two errors were
 1. `capaneus` English was wrong. It is now Longfellow's "Such as I was living, am I, dead." (XIV.51).
 2. `lucifer` citation didn't contain its quote. Changed to XXXIV.1-60, since "Vexilla regis…" is XXXIV.1.
 
+3. `lucifer` English repeated the Latin instead of translating it (found 2026-10-07 while capturing README screenshots). Now both lines of the sentence (XXXIV.1-2): English matched against Project Gutenberg #1001 ("Towards us; therefore look in front of thee"); Italian second half ("verso di noi; però dinanzi mira") from the standard text, not yet matched against a scanned source.
+
 Status of every quoted line ("source" = matched against a published text; "memory" = checked from model knowledge only, still to confirm):
 
 | node | cite | Italian | Longfellow |

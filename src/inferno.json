@@ -428,8 +428,8 @@
 
     { "id": "lucifer", "n": "Lucifer (Dis)", "k": "guardian", "icon": "lucifer", "lv": "core", "a": 0, "r": 1, "h": 12, "cite": "XXXIV.1-60", "conf": "text",
       "note": "Chest-deep in the ice. Three faces (red, yellow-white, black), six bat wings making the freezing wind, weeping from six eyes.",
-      "it": "Vexilla regis prodeunt inferni",
-      "en": "Vexilla Regis prodeunt Inferni" },
+      "it": "Vexilla regis prodeunt inferni / verso di noi; però dinanzi mira",
+      "en": "Vexilla Regis prodeunt Inferni / Towards us; therefore look in front of thee" },
     { "id": "judas", "n": "Judas Iscariot", "k": "soul", "icon": "judas", "lv": "core", "a": 0, "r": 1, "h": 14.5, "cite": "XXXIV.61-63", "conf": "text",
       "note": "In the front mouth, head inside, legs kicking; his back flayed by claws." },
     { "id": "brutus", "n": "Brutus", "k": "soul", "icon": "betrayer", "lv": "core", "a": 120, "r": 1, "h": 14, "rad": 1.2, "cite": "XXXIV.64-66", "conf": "text",
