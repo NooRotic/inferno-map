@@ -38,7 +38,9 @@ S = about an hour, M = a few hours. **Whole set: roughly 2–3 focused sessions 
 
 ### Working plan for the tableaux (October 2026)
 
-**Status:** planned, in progress on `feat/tableaux`. Line numbers below come from the table above and the existing `waterfall` node; anything new is verified against Longfellow before it ships.
+**Status (October 2026):** steps 1-5 below are built on `feat/tableaux` (22 scenes in `inferno.json` `tableaux`; schema in `CLAUDE.md`). Not yet done: the Motion toggle, the collision burst at the clash in Circle 4, a frame-rate check on a real phone, and the rest of the table (Lust sprites, Gluttony, Malebolge 3, Cocytus). Nothing is merged or deployed.
+
+**Original status line:** planned, in progress on `feat/tableaux`. Line numbers below come from the table above and the existing `waterfall` node; anything new is verified against Longfellow before it ships.
 
 **What exists:** rivers and blood are static level materials (`phlegethon` is a `blood`-kind ring at y = -64). Phlegethon Falls exists only as a data node (`waterfall`, XVI.91-105) with no geometry. `tickParticles()` runs two behaviours, `swirl` and `rain`. Level fading (passed, current, ahead) is handled in one place, so anything attached to a level inherits it.
 
@@ -56,7 +58,9 @@ S = about an hour, M = a few hours. **Whole set: roughly 2–3 focused sessions 
 2. The waterfall (Phlegethon Falls, XVI): a curved ribbon from the sand's rim down to the first bolgia with a scrolling streak texture and mist; Geryon rising and the cord (XVII) as one-shot events triggered by the journey's canto.
 3. The weights-pushers of Circle 4 (VII.22-35): two groups on opposite arcs, meeting, pausing with a collision burst, reversing. The cut wedge hides one meeting point, so stage it at the cut face.
 4. The blood river with centaurs (XII): scrolling surface, bubbles, centaurs on the bank, souls at fixed depths with a small bob.
-5. The small items from the table in one batch. Cheap early wins using `march`: Bolgia 1 (two files in opposite directions, XVIII.25-39), Bolgia 4 (diviners walking backwards, heads twisted, XX), Bolgia 9 (marchers split by the sword demon, XXVIII).
+5. The small items from the table in one batch. Built: Bolgia 1 files and demons, Bolgia 4 diviners (walking backwards), Bolgia 5 pitch, Bolgia 6 hypocrites, Bolgia 7 serpents, Bolgia 8 flames, Bolgia 9 sowers, heretics' tombs, Acheron and Styx flow, Styx bubbles. Behaviours: `march` (with `backwards`), `bob`, `fall`, `flicker`, `flow`, `push`, `cascade`, `track`; orbit folded into `march`.
+
+To see them: they are skipped when the OS asks for reduced motion, so add `?motion` to the URL to force them on. Cheap early wins using `march`: Bolgia 1 (two files in opposite directions, XVIII.25-39), Bolgia 4 (diviners walking backwards, heads twisted, XX), Bolgia 9 (marchers split by the sword demon, XXVIII).
 
 **Accuracy note**: there are no "wheels" in Circle 4. The hoarders and wasters push heavy weights around half-circles, collide, and reverse (VII.22-35). The wheel in that canto is Fortune's, in Virgil's speech (VII.67-96).
 

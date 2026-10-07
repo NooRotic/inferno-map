@@ -914,7 +914,7 @@ function tickParticles(dt) {
 
 /* ======================= tableaux: animated torment scenes (data: inferno.json "tableaux") ======================= */
 /* Each scene is one instanced billboard mesh tied to a level, so it fades with the level like everything else.
-   how: march (walk the visible arc; speed in degrees/s, sign = direction), bob (fixed spots, rise and fall),
+   how: march (walk the visible arc; speed in degrees/s, sign = direction; `backwards` faces the other way), bob (fixed spots, rise and fall),
         fall (drop from `top` to the floor and repeat), flicker (fixed spots, pulsing size), flow (scroll the level's floor texture; no sprites),
         push (a line of figures pushing a `weight` sprite along `span` [from, to] of the visible arc toward `dir`, pausing at the clash and turning back),
         cascade (a falling ribbon down the level's inner cliff, with mist), track (one sprite that follows `keys` [[canto, angle, radius, y], ...] as the journey moves; hidden outside them). */
@@ -1008,7 +1008,7 @@ function tickTableaux(t, force) {
         a = arcAngle(u); r = b.fixedRad; dir = mv;
         if (b.winst) { const wa = arcAngle(u + (mv * 0.014)); _tb.position.set(r * Math.cos(wa * DEG), y0 - size / 2 + 0.2 + (T.weightSize || 1.6) / 2, r * Math.sin(wa * DEG)); _tb.rotation.set(0, Math.atan2(cam.x - _tb.position.x, cam.z - _tb.position.z), 0); _tb.scale.set(T.weightSize || 1.6, T.weightSize || 1.6, 1); _tb.updateMatrix(); b.winst.setMatrixAt(i, _tb.matrix); }
       } else if (T.how === 'march') {
-        const sp = T.speed || 3; dir = Math.sign(sp); a = arcAngle(i / count + (sp / ARC) * t); r = b.fixedRad;
+        const sp = T.speed || 3; dir = Math.sign(sp) * (T.backwards ? -1 : 1); a = arcAngle(i / count + (sp / ARC) * t); r = b.fixedRad;
         if (T.lift) y += Math.abs(Math.sin(t * 5 + ph[i] * 6)) * T.lift;
       } else if (T.how === 'bob') y += (Math.sin(t * (T.rate || 1.5) + ph[i] * 6.28) * 0.5 + 0.5) * (T.lift || 0.4);
       else if (T.how === 'fall') { const top = T.top || 8; y = y0 + top - (((t * (T.fall || 4) + ph[i] * top) % top) + top) % top; }
