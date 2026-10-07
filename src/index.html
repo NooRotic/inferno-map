@@ -49,6 +49,16 @@ button { font: inherit; color: inherit; }
 .lbl.level { transform-origin: left center; transition: scale .12s, color .12s, background .12s, border-color .12s; }
 .lbl.level:hover { scale: 1.1; color: #fff; background: rgba(48,32,18,.92); border-bottom-color: var(--gold-hi); z-index: 4; }
 
+.lbl.earth { pointer-events: none; font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: .6em; color: var(--gold-hi); opacity: .92; text-shadow: 0 1px 3px #000, 0 0 12px #000; }
+
+/* ---------- first-visit coach marks ---------- */
+#coach { position: absolute; inset: 0; z-index: 15; pointer-events: none; }
+.coach-tip { position: absolute; max-width: 230px; background: var(--gold-hi); color: var(--ink); font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: .06em; line-height: 1.3;
+  padding: 8px 12px; border-radius: 3px; box-shadow: 0 4px 14px rgba(0,0,0,.6); animation: coachBob 1.4s ease-in-out infinite; }
+.coach-tip::after { content: ""; position: absolute; top: 100%; left: calc(var(--ax, 50%) - 7px); border: 7px solid transparent; border-top-color: var(--gold-hi); }
+@keyframes coachBob { 50% { translate: 0 -5px; } }
+@media (prefers-reduced-motion: reduce) { .coach-tip { animation: none; } }
+
 /* ---------- hover strip: name, sin and a line of context for whatever the pointer is on ---------- */
 .strip { position: absolute; left: 50%; top: calc(58px + env(safe-area-inset-top, 0px)); width: min(640px, calc(100% - 32px)); z-index: 7; display: flex; align-items: center; gap: 14px;
   padding: 8px 16px; pointer-events: none; opacity: 0; transform: translate(-50%, -8px); transition: opacity .12s, transform .12s; }
@@ -257,6 +267,8 @@ button { font: inherit; color: inherit; }
       <div class="go"><button class="btn primary" id="btnEnter">Intra · Enter</button><button class="btn" id="btnTour">Begin the journey</button></div>
     </div>
   </div>
+
+  <div id="coach" hidden aria-hidden="true"></div>
 
   <div id="loading"><div><div class="t">INFERNVS</div><div id="loadMsg">Preparing the map…</div></div></div>
 </div>
@@ -955,7 +967,22 @@ function setTab(t) {
   if (S.tab !== 'codex') $('#drawer').innerHTML = '';
   renderDrawer();
 }
-function closeIncipit() { $('#incipit').hidden = true; try { localStorage.setItem('inferno-incipit', '1'); } catch (e) {} }
+function closeIncipit(noCoach) { $('#incipit').hidden = true; try { localStorage.setItem('inferno-incipit', '1'); } catch (e) {} if (noCoach !== true) showCoach(); }
+/* one-time pointers at the first icon and the play button; any click or key dismisses them (add ?coach to the URL to replay) */
+function showCoach() {
+  let seen = false; try { seen = localStorage.getItem('inferno-coach') === '1'; } catch (e) {}
+  if (seen && !/[?&]coach\b/.test(location.search)) return;
+  const el = $('#coach'); el.innerHTML = ''; el.hidden = false;
+  [['#medgrid .med', 'Click any icon to meet a soul, guardian or place'], ['#btnPlay', "Press play to follow Dante's journey"]].forEach(([sel, txt]) => {
+    const t = document.querySelector(sel); if (!t || !t.offsetWidth) return;
+    const r = t.getBoundingClientRect(), tip = document.createElement('div'); tip.className = 'coach-tip'; tip.textContent = txt; el.appendChild(tip);
+    const x = Math.max(8, Math.min(innerWidth - tip.offsetWidth - 8, r.left + r.width / 2 - tip.offsetWidth / 2));
+    tip.style.left = x + 'px'; tip.style.top = (r.top - tip.offsetHeight - 14) + 'px'; tip.style.setProperty('--ax', (r.left + r.width / 2 - x) + 'px');
+  });
+  if (!el.children.length) { el.hidden = true; return; }
+  const off = () => { el.hidden = true; removeEventListener('pointerdown', off, true); removeEventListener('keydown', off, true); try { localStorage.setItem('inferno-coach', '1'); } catch (e) {} };
+  setTimeout(() => { addEventListener('pointerdown', off, true); addEventListener('keydown', off, true); }, 300);
+}
 
 function buildUI() {
   document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
@@ -968,7 +995,7 @@ function buildUI() {
   $('#btnLinks').addEventListener('click', (e) => { S.links = !S.links; e.currentTarget.setAttribute('aria-pressed', S.links); refreshEdges(); });
   $('#btnLabels').addEventListener('click', (e) => { S.labels = !S.labels; e.currentTarget.setAttribute('aria-pressed', S.labels); });
   $('#btnEnter').addEventListener('click', closeIncipit);
-  $('#btnTour').addEventListener('click', () => { closeIncipit(); clearSel(); setCanto(1); startPlay(); });
+  $('#btnTour').addEventListener('click', () => { closeIncipit(true); clearSel(); setCanto(1); startPlay(); });
   const touch = matchMedia('(pointer: coarse)').matches;
   $('#hints').innerHTML = touch ? '<span><b>1</b>drag to turn</span><span><b>2</b>pinch to zoom or pan</span>'
     : '<span><b>Drag</b>turn the globe</span><span><b>Right-drag</b>pan</span><span><b>Scroll</b>zoom</span><span><b>F</b>look closer</span><span><b>G</b>fly (WASD, Q/E)</span><span><b>I</b>icons or dots</span><span><b>Esc</b>clear</span>';
@@ -1135,6 +1162,11 @@ function place(el, s, dx = 10, dy = -10, force = false) {
 function updateLabels() {
   labelPool.forEach((el) => (el._used = false)); placed = [];
   const ps = toScreen(pilgrim.position); if (ps) place(label('P', 'Dante & Virgil', 'pilgrim'), ps, 14, 18, true);
+  if (!S.fadeLv && cam.dist > 200) {   // name the sphere: on its shoulder, beside the cut that faces the camera
+    const c = V(0, CY, 0), dir = camera.position.clone().sub(c).setY(0).normalize().applyAxisAngle(V(0, 1, 0), -0.75);
+    const s = toScreen(c.clone().addScaledVector(dir, RS).add(V(0, RS * 0.25, 0)));
+    if (s) { const el = label('EARTH', 'EARTH', 'earth'); place(el, s, -(el._mw || 80) / 2, 0, true); }
+  }
   if (S.sel) { const s = toScreen(S.sel.pos); if (s) place(label('N:' + S.sel.id, esc(S.sel.n), 'sel'), s, 26, 0, true); }
   if (S.labels) {
     const seen = new Set();
