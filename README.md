@@ -29,7 +29,7 @@ This project takes that structure literally:
 | Links | 37 typed relationships |
 | Levels | 29 (circles, ledges and pits, from the dark wood to the center) |
 | Journey | 78 waypoints through cantos I-XXXIV |
-| Icons | 110 original 16×16 sprites |
+| Icons | 110 original 16×16 sprites (plus three face bitmaps for Lucifer) |
 | Scenes | 33 animated scenes in 20 levels: crowds, rivers, flames, storms and falls |
 
 ## Taking the tour
@@ -94,6 +94,7 @@ The cord is thrown over the edge, and Geryon comes up out of the dark, waits on 
 | Circle 3 (Gluttony) | Rain and hail pour down on the souls lying in the mire, and Cerberus prowls the ring | VI.7-33 |
 | Bolgia 3 | The simoniacs hang head-down in the rock, with fire playing over their feet | XIX.1-30 |
 | Cocytus | The frozen traitors, ring by ring, with the faintest shiver in the ice | XXXII-XXXIV |
+| Lucifer | Chest-deep in layers of translucent ice, arms folded forward, six bat wings on his back, and three pixel faces (red, pale, black, weeping) on a head that follows your pointer | XXXIV |
 
 ### Smaller touches
 

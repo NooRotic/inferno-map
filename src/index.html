@@ -768,7 +768,12 @@ function buildLandmarks() {
   // the head (skull and three faces) is one group at the neck, so it can turn toward the pointer
   luciferHead = new THREE.Group(); luciferHead.position.set(0, cy + 13.3, 0); luciferHead.rotation.order = 'YZX'; scene.add(luciferHead);
   { const skull = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 1), lm); tag(skull); luciferHead.add(skull); }
-  [[FRONT, 0xa3271b], [FRONT + 120, 0xe2d29a], [FRONT - 120, 0x161010]].forEach(([a, c]) => { const f = new THREE.Mesh(new THREE.SphereGeometry(0.75, 10, 8), plainMat(c)); f.position.copy(polar(1.25, a, 0)); tag(f); luciferHead.add(f); });
+  [[FRONT, 0xa3271b, 'lucifer_face_red'], [FRONT + 120, 0xe2d29a, 'lucifer_face_pale'], [FRONT - 120, 0x161010, 'lucifer_face_black']].forEach(([a, c, face]) => {
+    const f = new THREE.Mesh(new THREE.SphereGeometry(0.6, 10, 8), plainMat(c)); f.position.copy(polar(1.2, a, 0)); tag(f); luciferHead.add(f);
+    // the pixel face, a flat bitmap just in front of the bulge and turned to look outward
+    const q = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2), new THREE.MeshBasicMaterial({ map: spriteTexture(face), transparent: true, alphaTest: 0.4, side: THREE.DoubleSide }));
+    q.position.copy(polar(1.95, a, 0.15)); q.rotation.y = (90 - a) * DEG; tag(q); luciferHead.add(q);
+  });
   // arms: shoulders at the sides of the torso, elbows out, fists folded forward onto the ice, as in the Dore engraving
   const limb = (p0, p1, r0, r1) => {
     const d = p1.clone().sub(p0), m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, d.length(), 8), lm);
@@ -1499,17 +1504,20 @@ function updateFade(dt) {
   });
 }
 
-/* Lucifer's head follows the pointer: aim at the point under it on the plane through the head, turn at most ~75 degrees either side of facing the camera and ~30 degrees up or down, eased */
+/* Lucifer's head follows the pointer: it starts out facing the camera (including the camera's elevation), the pointer's offset from the head turns it
+   from there, limited to about 75 degrees either side and eased, so he never spins to face away */
 const _lp = new THREE.Vector3(), _ld = new THREE.Vector3(), _lf = new THREE.Vector3();
 function updateLucifer(dt) {
   if (!luciferHead || !PTR.has) return;
   luciferHead.getWorldPosition(_lp);
   camera.getWorldDirection(_lf);
   _ld.set((PTR.x / innerWidth) * 2 - 1, -(PTR.y / innerHeight) * 2 + 1, 0.5).unproject(camera).sub(camera.position).normalize();
-  const t = _lp.clone().sub(camera.position).dot(_lf) / Math.max(0.05, _ld.dot(_lf)), P = camera.position.clone().addScaledVector(_ld, t).sub(_lp);
-  const toCam = Math.atan2(camera.position.z - _lp.z, camera.position.x - _lp.x), aim = Math.atan2(P.z, P.x);
+  const t = _lp.clone().sub(camera.position).dot(_lf) / Math.max(0.05, _ld.dot(_lf));
+  const off = camera.position.clone().addScaledVector(_ld, t).sub(_lp);                 // the pointer's offset from the head, in the plane through the head
+  const dir = camera.position.clone().sub(_lp).add(off);                                 // facing the camera, nudged toward the pointer
+  const toCam = Math.atan2(camera.position.z - _lp.z, camera.position.x - _lp.x), aim = Math.atan2(dir.z, dir.x);
   let d = aim - toCam; d = Math.atan2(Math.sin(d), Math.cos(d));
-  const yaw = Math.max(-1.3, Math.min(1.3, d)), pitch = Math.max(-0.5, Math.min(0.5, Math.atan2(P.y, Math.hypot(P.x, P.z))));
+  const yaw = Math.max(-1.3, Math.min(1.3, d)), pitch = Math.max(-0.3, Math.min(1.2, Math.atan2(dir.y, Math.hypot(dir.x, dir.z))));
   const k = 1 - Math.pow(0.02, dt);
   LOOK.yaw += (yaw - LOOK.yaw) * k; LOOK.pitch += (pitch - LOOK.pitch) * k;
   luciferHead.rotation.y = (FRONT_RAD - toCam) - LOOK.yaw; luciferHead.rotation.z = -LOOK.pitch;

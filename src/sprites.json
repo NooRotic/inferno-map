@@ -982,6 +982,60 @@
         "..n....n....n...",
         "...nn..n...nn...",
         ".....nnnnnn....."
-      ] }
+      ] },
+    "lucifer_face_red": { "grid": [
+      "................",
+      "....rrrrrrrr....",
+      "...rrrrrrrrrr...",
+      "..rrrrrrrrrrrr..",
+      "..rRRrrrrrrRRr..",
+      "..rrRRrrrrRRrr..",
+      "..rrwwrrrrwwrr..",
+      "..rrwkrrrrkwrr..",
+      "..rrrcrrrrcrrr..",
+      "..rrrcrRRrcrrr..",
+      "..rrrrrRRrrrrr..",
+      "..rrkkkkkkkkrr..",
+      "..rrkwkwkwkwkr..",
+      "...rrrkkkkrrr...",
+      "....rrrrrrrr....",
+      "................"
+    ] },
+    "lucifer_face_pale": { "grid": [
+      "................",
+      "....wwwwwwww....",
+      "...wwwwwwwwww...",
+      "..wwwwwwwwwwww..",
+      "..wYYwwwwwwYYw..",
+      "..wwYYwwwwYYww..",
+      "..wwiiwwwwiiww..",
+      "..wwikwwwwkiww..",
+      "..wwwcwwwwcwww..",
+      "..wwwcwYYwcwww..",
+      "..wwwwwYYwwwww..",
+      "..wwNNNNNNNNww..",
+      "..wwNiNiNiNiNw..",
+      "...wwwNNNNwww...",
+      "....wwwwwwww....",
+      "................"
+    ] },
+    "lucifer_face_black": { "grid": [
+      "................",
+      "....kkkkkkkk....",
+      "...kkkkkkkkkk...",
+      "..kkkkkkkkkkkk..",
+      "..kddkkkkkkddk..",
+      "..kkddkkkkddkk..",
+      "..kkyykkkkyykk..",
+      "..kkyrkkkkrykk..",
+      "..kkkckkkkckkk..",
+      "..kkkckddkckkk..",
+      "..kkkkkddkkkkk..",
+      "..kkRRRRRRRRkk..",
+      "..kkRwRwRwRwRk..",
+      "...kkkRRRRkkk...",
+      "....kkkkkkkk....",
+      "................"
+    ] }
   }
 }
