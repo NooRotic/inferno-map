@@ -38,7 +38,7 @@ S = about an hour, M = a few hours. **Whole set: roughly 2–3 focused sessions 
 
 ### Working plan for the tableaux (October 2026)
 
-**Status (October 2026):** steps 1-5 below are built on `feat/tableaux` (22 scenes in `inferno.json` `tableaux`; schema in `CLAUDE.md`). Also done: hovering or tapping a moving figure opens the card of the node its scene names (or the level's card), so the scenes explain themselves; a footer Motion toggle (remembered; starts off when the OS asks for reduced motion) and a spark burst where the Circle 4 groups meet. Not yet done: a frame-rate check on a real phone, and the rest of the table (Lust sprites, Gluttony, Malebolge 3, Cocytus). Nothing is merged or deployed.
+**Status (October 2026):** steps 1-5 below are built and merged to `main` (22 scenes in `inferno.json` `tableaux`; schema in `CLAUDE.md`). Also done: hovering or tapping a moving figure opens the card of the node its scene names (or the level's card), so the scenes explain themselves; a footer Motion toggle (remembered; starts off when the OS asks for reduced motion) and a spark burst where the Circle 4 groups meet. Not yet done: a frame-rate check on a real phone, and the rest of the table (Lust sprites, Gluttony, Malebolge 3, Cocytus). Nothing is merged or deployed.
 
 **Original status line:** planned, in progress on `feat/tableaux`. Line numbers below come from the table above and the existing `waterfall` node; anything new is verified against Longfellow before it ships.
 
@@ -110,12 +110,12 @@ The desktop experience (900px and up) is done and live. Phones were deliberately
 - Coach marks say "Tap", skip the hidden medallions and point at the play button and the gauge instead.
 - Hover strip stays off touch on purpose: a tap selects an icon and opens the bottom sheet.
 
-**Still open on touch:** the itinerary card is large on a phone, the gauge tip overlaps it briefly, and nothing has been tried on a real device.
+**Tried on a real phone (Android Chrome, October 2026):** it works well. The itinerary card now folds to one line until tapped. Still open on touch: the gauge coach tip briefly overlaps the itinerary card.
 
-**Untested anywhere:** iOS Safari (the vertical gauge relies on `writing-mode: vertical-lr` on a range input), Firefox, and any real device.
+**Untested:** iOS Safari (the vertical gauge relies on `writing-mode: vertical-lr` on a range input) and Firefox. If the gauge misbehaves on iOS, hiding it there is a one-line CSS change; the journey bar does the same job.
 
 **How to test here:** the in-app browser's `resize_window` mobile preset (375x812) switches to a touch user agent, though clicks still arrive as mouse events. The page only draws while the pane is rendered, so take a screenshot before reading label positions.
 
 **Link preview is done** (`src/og.png`, tags in `tools/build.mjs`). When the picture changes, bump the `?v=` on `og:image` and `twitter:image` there so platforms re-fetch it.
 
-**Still open from the same review:** README screenshots that predate the bands, gauge and wider rings, and header tabs clipping at about 800px wide.
+**Still open from the same review:** header tabs clipping at about 800px wide (the README screenshots are now current).
