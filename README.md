@@ -7,7 +7,7 @@
 ![INFERNVS: the cutaway globe with its colour bands, depth gauge, labels and journey bar](docs/img/hero.jpg)
 
 - **A cited dataset.** 130 points and 37 links, every one tied to a canto and line.
-- **A living model.** 22 animated scenes (a river of blood, a waterfall, crowds pushing weights) play out where the poem puts them. Tap a figure to ask what it is.
+- **A living model.** 33 animated scenes (a river of blood, a waterfall, crowds pushing weights, a storm of souls) play out where the poem puts them. Tap a figure to ask what it is.
 - **A guided descent.** Play the journey, or scrub it: the camera follows you down the funnel.
 - **Built for phones too.** A full-screen menu, a bottom-sheet card, a depth gauge and touch-sized controls.
 
@@ -30,7 +30,7 @@ This project takes that structure literally:
 | Levels | 29 (circles, ledges and pits, from the dark wood to the center) |
 | Journey | 78 waypoints through cantos I-XXXIV |
 | Icons | 110 original 16×16 sprites |
-| Scenes | 22 animated scenes in 13 levels: crowds, rivers, flames and falls |
+| Scenes | 33 animated scenes in 20 levels: crowds, rivers, flames, storms and falls |
 
 ## Taking the tour
 
@@ -54,7 +54,7 @@ The **journey bar** along the bottom does the same job by hand. Drag it and the 
 
 ## Living scenes
 
-The *Inferno* is full of motion: souls driven round in circles, rivers that boil, a waterfall that drops into the next circle. Twenty-two scenes put that motion back where the poem has it. They are built from the same sprites as the icons and tied to their levels, so they dim and brighten with the journey.
+The *Inferno* is full of motion: souls driven round in circles, rivers that boil, a waterfall that drops into the next circle. Thirty-three scenes put that motion back where the poem has it. They are built from the same sprites as the icons and tied to their levels, so they dim and brighten with the journey.
 
 ![Phlegethon Falls pouring over the cliff while demons patrol the pit below, recorded on a desktop](docs/img/motion-falls-desktop.webp)
 
@@ -85,6 +85,15 @@ The cord is thrown over the edge, and Geryon comes up out of the dark, waits on 
 | Bolgia 7 | Serpents swarm over the thieves | XXIV.82-96 |
 | Bolgia 8 | The flames of the false counselors flicker | XXVI.25-42 |
 | Bolgia 9 | The sowers of discord circle the ditch | XXVIII.22-63 |
+
+### Storms, mire and ice
+
+| Place | What moves | Cite |
+|---|---|---|
+| Circle 2 (Lust) | Two streams of souls are swept round the ring in opposite directions, tossed up and down on the storm | V.31-45 |
+| Circle 3 (Gluttony) | Rain and hail pour down on the souls lying in the mire, and Cerberus prowls the ring | VI.7-33 |
+| Bolgia 3 | The simoniacs hang head-down in the rock, with fire playing over their feet | XIX.1-30 |
+| Cocytus | The frozen traitors, ring by ring, with the faintest shiver in the ice | XXXII-XXXIV |
 
 ### Smaller touches
 

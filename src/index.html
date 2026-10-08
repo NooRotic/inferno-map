@@ -926,7 +926,7 @@ function tickParticles(dt) {
 /* ======================= tableaux: animated torment scenes (data: inferno.json "tableaux") ======================= */
 /* Each scene is one instanced billboard mesh tied to a level, so it fades with the level like everything else.
    how: march (walk the visible arc; speed in degrees/s, sign = direction; `backwards` faces the other way), bob (fixed spots, rise and fall),
-        fall (drop from `top` to the floor and repeat), flicker (fixed spots, pulsing size), flow (scroll the level's floor texture; no sprites),
+        fall (drop from `top` to the floor and repeat), flicker (fixed spots, pulsing size), any of them take `hover` to float above the floor, flow (scroll the level's floor texture; no sprites),
         push (a line of figures pushing a `weight` sprite along `span` [from, to] of the visible arc toward `dir`, pausing at the clash and turning back; `clash` [0-1 along the arc] adds a spark burst there),
         cascade (a falling ribbon down the level's inner cliff, with mist), track (one sprite that follows `keys` [[canto, angle, radius, y], ...] as the journey moves; hidden outside them). */
 const tableaux = [], flows = [], spriteTex = {};
@@ -1034,6 +1034,7 @@ function tickTableaux(t, force) {
       } else if (T.how === 'bob') y += (Math.sin(t * (T.rate || 1.5) + ph[i] * 6.28) * 0.5 + 0.5) * (T.lift || 0.4);
       else if (T.how === 'fall') { const top = T.top || 8; y = y0 + top - (((t * (T.fall || 4) + ph[i] * top) % top) + top) % top; }
       else if (T.how === 'flicker') sc = size * (0.8 + 0.25 * Math.sin(t * (T.rate || 6) + ph[i] * 6.28));
+      if (T.hover && T.how !== 'track') y += T.hover;   // lift figures off the floor (souls carried on the wind)
       const px = r * Math.cos(a * DEG), pz = r * Math.sin(a * DEG), yaw = Math.atan2(cam.x - px, cam.z - pz);
       const tang = (-Math.sin(a * DEG)) * Math.cos(yaw) * dir + (-Math.cos(a * DEG)) * Math.sin(yaw) * dir;   // direction of travel against the camera's right-hand side
       _tb.position.set(px, y, pz); _tb.rotation.set(0, yaw, 0); _tb.scale.set(sc * (tang < 0 ? -1 : 1), sc, 1); _tb.updateMatrix(); inst.setMatrixAt(i, _tb.matrix);
