@@ -147,7 +147,9 @@ button { font: inherit; color: inherit; }
 .itin .now b { font-family: var(--font-display); font-size: 10.5px; letter-spacing: .16em; color: var(--rubric); font-weight: 600; margin-right: 4px; }
 
 #detail { position: absolute; right: 16px; top: calc(74px + env(safe-area-inset-top, 0px)); width: 390px; max-height: calc(100% - 250px); overflow: auto; z-index: 6; padding: 18px 20px 18px; }
-#detail .x { position: absolute; right: 12px; top: 8px; background: none; border: 0; font-size: 26px; line-height: 1; cursor: pointer; color: var(--ink-soft); }
+/* the close button: big, outlined and pinned to the top of the card while it scrolls, so there is always an obvious way out */
+#detail .x { position: sticky; top: 0; float: right; z-index: 3; width: 44px; height: 44px; margin: -8px -8px 0 8px; padding: 0; border: 2px solid var(--rubric); border-radius: 50%; background: var(--vellum); color: var(--rubric); font-size: 30px; line-height: 38px; text-align: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+#detail .x:hover, #detail .x:focus-visible { background: var(--rubric); color: var(--vellum); }
 .dhead { display: grid; grid-template-columns: 84px 1fr; gap: 14px; align-items: center; margin-bottom: 6px; }
 .roundel { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; background: var(--vellum-2);
   box-shadow: 0 0 0 3px var(--ring, var(--ink)), 0 0 0 5px var(--vellum), 0 0 0 6px var(--gold); }
@@ -1561,7 +1563,7 @@ function renderStrip() {
   }
   el.classList.add('on');
 }
-function clickAt(x, y) { const n = pick(x, y); if (n) { selectNode(n); return; } const t = sceneTarget(x, y); if (t) { if (t.n) selectNode(t.n); else selectLevel(t.L); } }
+function clickAt(x, y) { const n = pick(x, y); if (n) { selectNode(n); return; } const t = sceneTarget(x, y); if (t) { if (t.n) selectNode(t.n); else selectLevel(t.L); return; } if (S.sel || S.selLevel) clearSel(); }   // a tap on empty map closes the open card
 const labelPool = new Map();
 function label(key, text, cls) {
   let el = labelPool.get(key);
