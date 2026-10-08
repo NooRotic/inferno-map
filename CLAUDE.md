@@ -14,6 +14,7 @@ No tests, linter or dependencies; Node is only used for the build script.
 npm run dev            # build dist/ and serve at http://localhost:5173
 npm run build          # dist/ with Three.js loaded from cdnjs
 npm run build:vendor   # dist/ with Three.js copied to dist/vendor/ (use this for deploys)
+python tools/make-favicon.py   # regenerate the favicon files in src/ from Lucifer's red pixel face (needs Pillow)
 ```
 
 The page `fetch()`es its JSON, so `file://` does not work; always serve over HTTP. `dist/` is gitignored and wiped on every build.

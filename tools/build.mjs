@@ -32,6 +32,10 @@ const html = `<!doctype html>
 ${title}
 <meta name="description" content="${DESC}">
 <meta name="theme-color" content="#110c08">
+<!-- favicon: SVG for current browsers, ICO fallback, touch icon for iOS. Regenerate with tools/make-favicon.py. Relative paths so a subfolder deploy works. -->
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <!-- link preview: og:image must be an absolute URL; bump ?v= whenever src/og.png changes so platforms re-fetch it -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="INFERNVS">
@@ -54,5 +58,5 @@ ${body.trim()}
 </html>
 `;
 await writeFile(join(root, 'dist/index.html'), html);
-for (const f of ['inferno.json', 'sprites.json', 'og.png']) await copyFile(join(root, 'src', f), join(root, 'dist', f));
+for (const f of ['inferno.json', 'sprites.json', 'og.png', 'favicon.svg', 'favicon.ico', 'apple-touch-icon.png']) await copyFile(join(root, 'src', f), join(root, 'dist', f));
 console.log(`dist/ built${vendor ? ' (three.js vendored)' : ''}`);
