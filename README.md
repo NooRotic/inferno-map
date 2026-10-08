@@ -4,7 +4,7 @@
 
 **Live:** [inferno.pollardjr.com](https://inferno.pollardjr.com) · plain HTML, vanilla JS and Three.js · no framework, no bundler, no backend
 
-![INFERNVS: the cutaway at the end of the descent](docs/img/hero.png)
+![INFERNVS: the cutaway globe with its colour bands, depth gauge, labels and journey bar](docs/img/hero.jpg)
 
 - **A cited dataset.** 130 points and 37 links, every one tied to a canto and line.
 - **A living model.** 22 animated scenes (a river of blood, a waterfall, crowds pushing weights) play out where the poem puts them. Tap a figure to ask what it is.
