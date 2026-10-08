@@ -56,6 +56,8 @@ The **journey bar** along the bottom does the same job by hand. Drag it and the 
 
 The *Inferno* is full of motion: souls driven round in circles, rivers that boil, a waterfall that drops into the next circle. Twenty-two scenes put that motion back where the poem has it. They are built from the same sprites as the icons and tied to their levels, so they dim and brighten with the journey.
 
+![Phlegethon Falls pouring over the cliff while demons patrol the pit below, recorded on a desktop](docs/img/motion-falls-desktop.webp)
+
 - **Each scene says what is staged.** A scene's `conf` field follows the same rule as the rest of the data: it is `text` where the poem states what is happening and `interp` where the movement is the author's reading. Where the poem states the motion, the scene's citation says where. The pace, spacing and number of figures are always staging.
 - **Tap a figure to ask what it is.** A scene points at an existing point, so tapping (or hovering) a moving figure opens that point's card with the sin, the punishment, the text and the citation. A scene with no matching point opens its circle's card instead.
 - **Motion is optional.** The **Motion** button in the footer turns every scene (and the drifting particles) on and off, and remembers the choice. If your system is set to reduce motion, the scenes start off and the button turns them on. Tapping it shows what it does.
@@ -92,7 +94,7 @@ The Acheron and the Styx flow, with bubbles rising in the mud of the sullen (VII
 
 The layout adapts below 900 pixels wide, with the full phone layout under 720.
 
-<p align="center"><img src="docs/img/phone-card.jpg" width="260" alt="A point card as a bottom sheet on a phone"> <img src="docs/img/phone-circle.jpg" width="260" alt="A circle card listing its points"></p>
+<p align="center"><img src="docs/img/motion-phone.webp" width="230" alt="Playing the journey on a phone, past the river of blood and the landslide"> <img src="docs/img/phone-card.jpg" width="230" alt="A point card as a bottom sheet on a phone"> <img src="docs/img/phone-circle.jpg" width="230" alt="A circle card listing its points"></p>
 
 - **A full-screen menu.** The tab bar becomes a hamburger button that opens the five sections as a page of their own.
 - **A bottom-sheet card.** Selecting a point or a circle opens its card from the bottom, and the camera shifts so what you picked stays in view above the sheet.
