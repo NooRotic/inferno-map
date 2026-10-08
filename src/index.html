@@ -769,6 +769,8 @@ function buildLandmarks() {
     const pivot = new THREE.Object3D(); pivot.position.set(0, cy + 10.5 + (k % 2) * 1.4, 0); pivot.rotation.y = -(Math.floor(k / 2) * 120 + 60) * DEG + (k % 2 ? 0.25 : -0.25);
     const w = new THREE.Mesh(wingGeo, wingM); tag(w); pivot.add(w); scene.add(pivot); wings.push(w);
   }
+  // he is chest-deep in the ice (his card, XXXIV.1-60): a translucent mound rising from the Judecca floor to mid-chest
+  add(latheW([[1.25, cy + 7], [3.3, cy]], texMat('ice', 4, 1, { transparent: true, opacity: 0.6 })));
   add(arcLine(1.8, -126, new THREE.LineBasicMaterial({ color: 0xe0bb64 })), 'path');
   CTX = null;
 }
@@ -1389,7 +1391,19 @@ function bindControls(c) {
   addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
   addEventListener('blur', () => keys.clear());
 }
-function zoomBy(f) { S.follow = false; cam.g.dist = Math.max(4, Math.min(1200, cam.g.dist * f)); }
+const ZOOM_MIN = 4;
+function zoomBy(f) {
+  S.follow = false;
+  if (f < 1 && cam.g.dist * f < ZOOM_MIN) {   // at the closest distance: carry the focus point forward so the zoom keeps travelling, instead of stopping dead
+    const dir = camera.getWorldDirection(new THREE.Vector3());
+    cam.g.target.addScaledVector(dir, Math.max(cam.g.dist, 10) * (1 - f));
+    const c = V(0, CY, 0), off = cam.g.target.clone().sub(c), lim = RS * 1.2;   // but not out into empty space
+    if (off.length() > lim) cam.g.target.copy(c.add(off.setLength(lim)));
+    cam.g.dist = ZOOM_MIN;
+    return;
+  }
+  cam.g.dist = Math.max(ZOOM_MIN, Math.min(1200, cam.g.dist * f));
+}
 function pan(dx, dy) {
   S.follow = false;
   const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0), upv = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1), s = cam.dist * 0.0016;
