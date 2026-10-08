@@ -770,10 +770,10 @@ function buildLandmarks() {
     const w = new THREE.Mesh(wingGeo, wingM); tag(w); pivot.add(w); scene.add(pivot); wings.push(w);
   }
   // he is chest-deep in the ice (his card, XXXIV.1-60): a translucent slab around him whose top sits at mid-chest, with a skirt down to the floor,
-  // a fainter layer part-way down for depth, and rings on the top surface that mark the four zones
+  // four fainter layers going down for depth, and rings on the top surface that mark the four zones
   const iceTop = cy + 7, iceR = LV.caina.ro + 0.3, iceMat = (o) => texMat('ice', 4, 1, { transparent: true, opacity: o, depthWrite: false });
   add(latheW([[1.25, iceTop], [iceR, iceTop], [iceR, cy]], iceMat(0.4)));
-  add(latheW([[1.1, cy + 3.5], [iceR - 0.1, cy + 3.5]], iceMat(0.24)));
+  [[5.3, 0.2, 5], [3.7, 0.22, 3], [2.2, 0.2, 4], [0.9, 0.17, 6]].forEach(([dy, o, rep]) => add(latheW([[1.1, cy + dy], [iceR - 0.15, cy + dy]], texMat('ice', rep, 1, { transparent: true, opacity: o, depthWrite: false }))));   // layers at different depths; each denser look below the last
   ['caina', 'antenora', 'ptolomea', 'judecca'].forEach((id) => add(arcLine(LV[id].ro, iceTop + 0.02, new THREE.LineBasicMaterial({ color: 0xcdeaf6, transparent: true, opacity: 0.55 }))));
   add(arcLine(1.8, -126, new THREE.LineBasicMaterial({ color: 0xe0bb64 })), 'path');
   CTX = null;
