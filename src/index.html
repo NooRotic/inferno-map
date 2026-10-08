@@ -49,8 +49,11 @@ button { font: inherit; color: inherit; }
 .lbl.level { border-left: 3px solid var(--band, #6a5a44); }
 .bandsw { width: 8px; height: 26px; border-radius: 2px; justify-self: center; }
 .strip { border-left: 6px solid var(--band, transparent); }
-.lbl.level { transform-origin: left center; transition: scale .12s, color .12s, background .12s, border-color .12s; }
-.lbl.level:hover { scale: 1.1; color: #fff; background: rgba(48,32,18,.92); border-bottom-color: var(--gold-hi); z-index: 4; }
+/* labels are placed with --tx/--ty and grown with --s inside one transform. The separate `scale` property would apply after the translate and scale the whole position, so the label leapt away from the pointer on hover. */
+@property --s { syntax: '<number>'; inherits: false; initial-value: 1; }
+.lbl { transform: translate(var(--tx, 0px), var(--ty, 0px)) scale(var(--s)); }
+.lbl.level { transform-origin: left center; transition: --s .12s, color .12s, background .12s, border-color .12s; }
+.lbl.level:hover { --s: 1.1; color: #fff; background: rgba(48,32,18,.92); border-bottom-color: var(--gold-hi); z-index: 4; }
 
 .lbl.earth { pointer-events: none; font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: .6em; color: var(--gold-hi); opacity: .92; text-shadow: 0 1px 3px #000, 0 0 12px #000; }
 
@@ -1501,7 +1504,7 @@ function place(el, s, dx = 10, dy = -10, force = false) {
   if (el._mw === undefined || el._mt !== el._t) { el.style.display = ''; el._mw = el.offsetWidth; el._mh = el.offsetHeight; el._mt = el._t; }
   const x = s.x + dx, y = s.y + dy - el._mh / 2, r = { x, y, w: el._mw, h: el._mh };
   if (!force && placed.some((q) => x < q.x + q.w + 4 && x + r.w + 4 > q.x && y < q.y + q.h && y + r.h > q.y)) { el._used = false; return; }
-  placed.push(r); el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`; el.style.display = '';
+  placed.push(r); el.style.setProperty('--tx', Math.round(x) + 'px'); el.style.setProperty('--ty', Math.round(y) + 'px'); el.style.display = '';
 }
 function updateLabels() {
   labelPool.forEach((el) => (el._used = false)); placed = [];
