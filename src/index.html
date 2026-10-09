@@ -224,6 +224,7 @@ button { font: inherit; color: inherit; }
 #btnOpts .car { display: inline-block; font-size: 14px; line-height: 1; vertical-align: -1px; transition: transform .15s; }
 .ctrlrow.collapsed #btnOpts .car { transform: none; }
 .ctrlrow:not(.collapsed) #btnOpts .car { transform: rotate(180deg); }
+#btnNow[hidden] { display: none; }
 .scrub { display: grid; grid-template-columns: 1fr; align-items: center; border-top: 1px solid #4a3c2c; padding-top: 8px; }
 .readout { font-family: var(--font-display); font-size: 20px; color: var(--gold-hi); min-width: 86px; text-align: right; line-height: 1.05; font-weight: 600; padding-right: 6px; }
 .readout small { font-size: 10px; letter-spacing: .2em; color: var(--on-dark-soft); display: block; line-height: 1; font-weight: 400; }
@@ -376,6 +377,7 @@ button { font: inherit; color: inherit; }
         <button class="btn" id="btnLinks" aria-pressed="true">Links</button>
         <button class="btn" id="btnLabels" aria-pressed="true">Labels</button>
         <button class="btn" id="btnMotion" aria-pressed="true" title="Animated scenes, moving crowds and flowing water">Motion</button>
+        <button class="btn" id="btnNow" aria-pressed="true" hidden title="Show or hide the documented modern events and patterns">Now</button>
       </span>
       <span class="spacer"></span>
       <div class="readout" id="readout"><small>CANTO</small>I</div>
@@ -493,16 +495,18 @@ const KIND = {
   place: { shape: 2, ring: [0.17, 0.29, 0.54], la: 'Locus', en: 'Place', css: '#2b4a8a' },
   event: { shape: 3, ring: [0.72, 0.54, 0.16], la: 'Eventus', en: 'Event', css: '#b8892a' },
   absent: { shape: 4, ring: [0.45, 0.42, 0.38], la: 'Exspectatus', en: 'Not yet arrived', css: '#8a7f70' },
+  mevent: { shape: 3, ring: [0.10, 0.58, 0.62], la: 'Hodie', en: 'Documented event', css: '#1f7f86', modern: true },
+  mpattern: { shape: 3, ring: [0.52, 0.40, 0.78], la: 'Mos', en: 'Pattern of behavior', css: '#6a52b0', modern: true },
 };
-const EDGE = { pair: ['#efe4cc', 'Bound together'], betray: ['#d0442f', 'Betrayal'], cause: ['#7f9fe0', 'Cause and effect'], source: ['#7f9fe0', 'Source'], fate: ['#e0bb64', 'Foretold, or waiting below'], echo: ['#b49ad8', 'Echo across the poem'], summon: ['#e0bb64', 'Summons'], home: ['#e0bb64', 'Home'], judge: ['#e0bb64', 'Judgment'], lie: ['#d0442f', 'Lie'] };
+const EDGE = { pair: ['#efe4cc', 'Bound together'], betray: ['#d0442f', 'Betrayal'], cause: ['#7f9fe0', 'Cause and effect'], source: ['#7f9fe0', 'Source'], fate: ['#e0bb64', 'Foretold, or waiting below'], echo: ['#b49ad8', 'Echo across the poem'], summon: ['#e0bb64', 'Summons'], home: ['#e0bb64', 'Home'], judge: ['#e0bb64', 'Judgment'], lie: ['#d0442f', 'Lie'], modern: ['#5fc4c9', 'Modern echo'] };
 const LATIN_NUM = (g) => g.replace(/Circle (\d+)/, (_, n) => 'Circulus ' + ROMAN[+n]).replace('Ante-Inferno', 'Ante-Infernum').replace('Above', 'Super Terram').replace('The Well', 'Puteus').replace('Center', 'Centrum').replace('Exit', 'Exitus');
 
-let PIX, D, LV = {}, LEVELS = [], NODES = [], NODE = {}, PATH = [];
+let PIX, D, LV = {}, LEVELS = [], NODES = [], NODE = {}, PATH = [], SRC = {}, HAS_MODERN = false;
 const BAND = {};   // sin bands (threshold ... treachery) from meta.bands, keyed by id
 const bandOf = (L) => BAND[L.band];
 const bandCss = (L) => (bandOf(L) ? bandOf(L).css : '#6a5a44');
 let renderer, scene, camera, clock;
-const S = { motion: (() => { if (/[?&]motion/.test(location.search)) return true; try { const v = localStorage.getItem('inferno-motion'); if (v === '0' || v === '1') return v === '1'; } catch (e) {} return !REDUCED; })(), icons: true, canto: 10.3, curLevel: null, focusLevel: null, fadeLv: null, sel: null, selLevel: null, hover: null, playing: false, follow: false, fly: false, links: true, labels: true, tab: 'map', key: '' };
+const S = { motion: (() => { if (/[?&]motion/.test(location.search)) return true; try { const v = localStorage.getItem('inferno-motion'); if (v === '0' || v === '1') return v === '1'; } catch (e) {} return !REDUCED; })(), icons: true, canto: 10.3, curLevel: null, focusLevel: null, fadeLv: null, sel: null, selLevel: null, hover: null, playing: false, follow: false, fly: false, links: true, labels: true, now: true, tab: 'map', key: '' };
 
 const getJSON = (f) => fetch(f).then((r) => { if (!r.ok) throw new Error(f + ' ' + r.status); return r.json(); });
 Promise.all([getJSON('inferno.json'), getJSON('sprites.json')]).then(([d, sp]) => init(d, sp)).catch((e) => {
@@ -589,14 +593,16 @@ const latheW = (pts, m, seg = 140) => new THREE.Mesh(new THREE.LatheGeometry(pts
 
 /* ======================= init ======================= */
 function init(data, spriteSpec) {
-  D = data;
+  D = data; SRC = D.sources || {};
   (D.meta.bands || []).forEach((b) => (BAND[b.id] = { ...b, col: new THREE.Color(b.tint) }));
   PIX = buildPix(spriteSpec);
   LEVELS = D.levels.map((l, i) => ({ ...l, idx: i }));
   LEVELS.forEach((l) => (LV[l.id] = l));
   NODES = D.nodes.filter((n) => { const ok = n.id && LV[n.lv]; if (!ok) console.warn('Skipping point with unknown level', n); return ok; })
-    .map((n) => ({ ...n, k: KIND[n.k] ? n.k : 'soul', canto: cantoOf(n.cite), pos: null, links: [] }));
+    .map((n) => ({ ...n, k: KIND[n.k] ? n.k : 'soul', canto: n.unlocks != null ? n.unlocks : cantoOf(n.cite), pos: null, links: [] }));
   NODES.forEach((n) => { n.sprite = PIX.resolve(n.icon, n.k); NODE[n.id] = n; });
+  HAS_MODERN = NODES.some((n) => n.modern);
+  if (HAS_MODERN) { try { const v = localStorage.getItem('inferno-now'); if (v === '0' || v === '1') S.now = v === '1'; } catch (e) {} }
   D.edges = (D.edges || []).filter((e) => (NODE_OR_LEVEL(e.a) && NODE_OR_LEVEL(e.b)) || (console.warn('Skipping link with a missing end', e), false));
   NODES.forEach((n) => (n.pos = posOf(n)));
   D.edges.forEach((e) => { const A = NODE[e.a], B = NODE[e.b]; if (A) A.links.push({ to: e.b, e }); if (B) B.links.push({ to: e.a, e }); });
@@ -912,7 +918,8 @@ function buildMarkers() {
       uIcons: { value: 1 }, uAtlas: { value: atlas }, uGrid: { value: new THREE.Vector2(PIX.COLS, PIX.ROWS) } },
     vertexShader: `attribute vec3 aColor; attribute float aShape; attribute float aState; attribute float aSize; attribute float aSprite;
       uniform float uScale; uniform float uDpr; uniform float uIcons; varying vec3 vColor; varying float vShape; varying float vState; varying float vSprite;
-      void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * mv;
+      void main(){ if (aSize < 0.01) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; return; }
+        vec4 mv = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * mv;
         vColor = aColor; vShape = aShape; vState = aState; vSprite = aSprite;
         if (uIcons > 0.5) {
           float want = clamp(aSize * uScale * 1.3 / -mv.z, 32.0 * uDpr, 84.0 * uDpr);
@@ -971,7 +978,7 @@ function buildEdges() {
 }
 function refreshEdges() {
   edgeObjs.forEach(({ e, line, m }) => { const on = S.sel && (e.a === S.sel.id || e.b === S.sel.id);
-    line.visible = S.links || on; m.opacity = on ? 1 : (S.sel || S.selLevel ? 0.08 : 0.28); });
+    line.visible = (S.links || on) && liveId(e.a) && liveId(e.b); m.opacity = on ? 1 : (S.sel || S.selLevel ? 0.08 : 0.28); });
 }
 
 /* ======================= ambient particles ======================= */
@@ -1134,6 +1141,8 @@ function tickTableaux(t, force) {
 /* ======================= state & HUD ======================= */
 function levelState(L) { const ci = S.curLevel.idx; return L.idx < ci ? 'passed' : L.idx === ci ? 'current' : 'ahead'; }
 function nodeMet(n) { return n.canto <= Math.floor(S.canto + 1e-6) || S.canto >= 35; }
+const live = (n) => !n.modern || S.now;              // modern points vanish when the Now layer is off
+const liveId = (id) => !NODE[id] || live(NODE[id]);  // level ids and book points are always live
 function refreshFloors() {
   LEVELS.forEach((L) => {
     const m = floorMats[L.id], om = outlineMats[L.id]; if (!m) return;
@@ -1145,9 +1154,9 @@ function refreshFloors() {
   });
 }
 function refreshMarkers() {
-  const st = markerGeo.attributes.aState;
-  NODES.forEach((n, i) => { let v = nodeMet(n) ? 1 : 0; if (S.hover === n) v = 2; if (S.sel === n) v = 3; st.array[i] = v; });
-  st.needsUpdate = true;
+  const st = markerGeo.attributes.aState, sz = markerGeo.attributes.aSize;
+  NODES.forEach((n, i) => { let v = nodeMet(n) ? 1 : 0; if (S.hover === n) v = 2; if (S.sel === n) v = 3; st.array[i] = v; sz.array[i] = live(n) ? (n.k === 'guardian' ? 1.1 : 1) : 0; });
+  st.needsUpdate = true; sz.needsUpdate = true;
 }
 function setCanto(c, fromCode) {
   S.canto = Math.max(1, Math.min(35, c));
@@ -1177,7 +1186,7 @@ function renderCounters() {
   }).join('');
 }
 function renderMedallions() {
-  const L = S.focusLevel || (S.sel && LV[S.sel.lv]) || S.curLevel, list = NODES.filter((n) => n.lv === L.id).slice(0, 12);
+  const L = S.focusLevel || (S.sel && LV[S.sel.lv]) || S.curLevel, list = NODES.filter((n) => n.lv === L.id && live(n)).slice(0, 12);
   $('#medTitle').textContent = `In hoc circulo · ${list.filter(nodeMet).length} / ${list.length}`;
   $('#medgrid').innerHTML = list.map((n) => `<button class="med ${nodeMet(n) ? '' : 'ahead'} ${S.sel === n ? 'sel' : ''}" style="--c:${KIND[n.k].css}" data-id="${n.id}" title="${esc(n.n)}" aria-label="${esc(n.n)}">${icon(n.sprite, 40)}</button>`).join('');
 }
@@ -1208,10 +1217,10 @@ function renderDetail() {
       <div class="badges"><span class="badge ${n.conf}">${n.conf === 'text' ? 'stated in the text' : 'interpretive'}</span><span class="badge">${met ? 'encountered' : 'not yet reached'}</span>${bandBadge(L)}${n.sin ? `<span class="badge">${esc(n.sin)}</span>` : ''}</div>
       <p class="note">${esc(n.note)}</p>
       ${n.it || n.en ? `<div class="verse">${n.it ? `<div class="it">${esc(n.it)}</div>` : ''}${n.en ? `<div class="en">${esc(n.en)}</div>` : ''}</div>` : ''}
-      ${n.links.length ? `<div class="sect">Nexus · Connections</div><div class="links">${n.links.map(({ to, e }) => `<button class="linkbtn" data-go="${to}" style="--c:${(EDGE[e.t] || EDGE.echo)[0] === '#efe4cc' ? '#2a1d12' : (EDGE[e.t] || EDGE.echo)[0]}"><b>${NODE[to] ? icon(NODE[to].sprite, 22) : ''}${esc(linkName(to))}</b><span>${esc(e.note)} · <span class="cite">${esc(e.cite)}</span>${e.conf === 'interp' ? ' · interpretive' : ''}</span></button>`).join('')}</div>` : ''}
+      ${n.links.some(({ to }) => liveId(to)) ? `<div class="sect">Nexus · Connections</div><div class="links">${n.links.filter(({ to }) => liveId(to)).map(({ to, e }) => `<button class="linkbtn" data-go="${to}" style="--c:${(EDGE[e.t] || EDGE.echo)[0] === '#efe4cc' ? '#2a1d12' : (EDGE[e.t] || EDGE.echo)[0]}"><b>${NODE[to] ? icon(NODE[to].sprite, 22) : ''}${esc(linkName(to))}</b><span>${esc(e.note)}${e.cite ? ` · <span class="cite">${esc(e.cite)}</span>` : ''}${e.conf === 'interp' ? ' · interpretive' : ''}</span></button>`).join('')}</div>` : ''}
       <div class="actions"><button class="btn" data-act="center">Look closer <span class="key">F</span></button><button class="btn" data-act="jump">Go to Canto ${ROMAN[n.canto]}</button></div>`;
   } else {
-    const L = S.selLevel, list = NODES.filter((n) => n.lv === L.id), st = levelState(L);
+    const L = S.selLevel, list = NODES.filter((n) => n.lv === L.id && live(n)), st = levelState(L);
     el.innerHTML = `<button class="x" aria-label="Close">×</button>
       <div class="eyebrow">${esc(LATIN_NUM(L.group))}</div><h2>${esc(L.la || L.name)}</h2>
       <div class="where">${esc(L.name)} · <span class="cite">${esc(L.cite)}</span></div>
@@ -1274,7 +1283,7 @@ function renderDrawer() {
 }
 function renderCodexRows() {
   const q = ($('#q').value || '').toLowerCase().trim(); let html = '', lastLv = '';
-  NODES.filter((n) => !q || (n.n + ' ' + n.note + ' ' + n.cite).toLowerCase().includes(q)).forEach((n) => {
+  NODES.filter((n) => live(n) && (!q || (n.n + ' ' + n.note + ' ' + n.cite).toLowerCase().includes(q))).forEach((n) => {
     if (n.lv !== lastLv) { html += `<div class="grouphead">${esc(LV[n.lv].la || LV[n.lv].name)}</div>`; lastLv = n.lv; }
     html += `<button class="row ${nodeMet(n) ? '' : 'dim'}" data-id="${n.id}">${icon(n.sprite, 26)}<span>${esc(n.n)}</span><span class="cite">${esc(n.cite)}</span></button>`;
   });
@@ -1396,6 +1405,16 @@ function buildUI() {
   $('#btnMotion').setAttribute('aria-pressed', S.motion);
   $('#btnMotion').addEventListener('click', (e) => { S.motion = !S.motion; e.currentTarget.setAttribute('aria-pressed', S.motion); try { localStorage.setItem('inferno-motion', S.motion ? '1' : '0'); } catch (err) {}
     toast(S.motion ? 'Motion on: crowds march, rivers flow, the falls pour. Tap a figure to see who they are and why' : 'Motion off: crowds, rivers and the falls hold still'); });
+  const btnNow = $('#btnNow');
+  if (HAS_MODERN) {
+    btnNow.hidden = false; btnNow.setAttribute('aria-pressed', S.now);
+    btnNow.addEventListener('click', () => {
+      S.now = !S.now; btnNow.setAttribute('aria-pressed', S.now);
+      try { localStorage.setItem('inferno-now', S.now ? '1' : '0'); } catch (err) {}
+      if (!S.now && S.sel && S.sel.modern) clearSel(); else refreshAll();
+      toast(S.now ? "Now on: documented events and patterns sit beside Dante's own points" : "Now off: Dante's points only");
+    });
+  }
   $('#btnEnter').addEventListener('click', closeIncipit);
   $('#btnTour').addEventListener('click', () => { closeIncipit(true); clearSel(); setCanto(1); startPlay(); });
   const touch = matchMedia('(pointer: coarse)').matches;
@@ -1589,7 +1608,7 @@ const tmp = new THREE.Vector3();
 function toScreen(p) { tmp.copy(p).project(camera); if (tmp.z > 1 || tmp.z < -1) return null; return { x: (tmp.x + 1) / 2 * innerWidth, y: (1 - tmp.y) / 2 * innerHeight, z: tmp.z }; }
 function pick(x, y) {
   let best = null, bd = S.icons ? 30 : 18;
-  NODES.forEach((n) => { const s = toScreen(n.pos); if (!s) return; const d = Math.hypot(s.x - x, s.y - y) - (nodeMet(n) ? 2 : 0) - (S.fadeLv && n.lv === S.fadeLv ? 6 : 0); if (d < bd) { bd = d; best = n; } });
+  NODES.forEach((n) => { if (!live(n)) return; const s = toScreen(n.pos); if (!s) return; const d = Math.hypot(s.x - x, s.y - y) - (nodeMet(n) ? 2 : 0) - (S.fadeLv && n.lv === S.fadeLv ? 6 : 0); if (d < bd) { bd = d; best = n; } });
   return best;
 }
 /* scenes (tableaux) can be pointed at too: a hit selects the node the scene names, or its level when it names none */
@@ -1617,7 +1636,7 @@ function renderStrip() {
   if (n) {
     el.innerHTML = `${icon(n.sprite, 30)}<span class="nm">${esc(n.n)}</span><span class="cat">${esc(KIND[n.k].en)} · ${esc(n.sin || LV[n.lv].sin)}</span><span class="desc">${esc(n.note)}</span><span class="cite">${esc(n.cite)}</span>`;
   } else {
-    const k = NODES.filter((m) => m.lv === L.id).length;
+    const k = NODES.filter((m) => m.lv === L.id && live(m)).length;
     el.innerHTML = `<span class="nm">${esc(L.la || L.name)}</span><span class="cat">${esc(L.sin)}</span><span class="desc">${esc(L.name)} · ${k} ${k === 1 ? 'point' : 'points'} of interest</span><span class="cite">${esc(L.cite)}</span>`;
   }
   el.classList.add('on');
