@@ -70,3 +70,20 @@ test('coverage passes through, null when absent; extra edges are validated', () 
   assert.throws(() => run([ev()], { edges: [{ a: 'm1', b: 'ghost', t: 'modern' }] }), /edge end "ghost"/);
   assert.equal(run([ev()], { edges: [{ a: 'm1', b: 'lv1', t: 'modern', cite: '', note: 'x' }] }).data.edges.length, 3);
 });
+
+test('legend passes through to meta.legend, null when absent', () => {
+  const bs = { sprites: { a: { grid: ['x'] } } };
+  assert.equal(mergeModern(base(), { nodes: [] }, bs, {}).data.meta.legend, null);
+  const legend = [{ icon: 'a', label: 'Massacre' }, { icon: 'b', label: 'Broken treaty' }];
+  const { data } = mergeModern(base(), { nodes: [], legend }, bs, { sprites: { b: { grid: ['y'] } } });
+  assert.deepEqual(data.meta.legend, legend);
+});
+
+test('legend entries are validated: shape, known icon, non-empty label', () => {
+  const bs = { sprites: { a: { grid: ['x'] } } };
+  const go = (legend) => mergeModern(base(), { nodes: [], legend }, bs, {});
+  assert.throws(() => go('nope'), /legend must be a list/);
+  assert.throws(() => go([{ icon: 'ghost', label: 'X' }]), /legend entry 1: unknown icon "ghost"/);
+  assert.throws(() => go([{ icon: 'a', label: '' }]), /legend entry 1: label must be a non-empty string/);
+  assert.throws(() => go([{ icon: 'a' }]), /legend entry 1: label must be a non-empty string/);
+});

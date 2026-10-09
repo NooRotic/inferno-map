@@ -194,6 +194,8 @@ button { font: inherit; color: inherit; }
 .cov ul { margin: 4px 0 8px 18px; padding: 0; font-size: 14px; }
 .cov li { color: var(--ink-soft); }
 .cov li.done { color: var(--ink); font-weight: 600; }
+.iconkey { display: grid; grid-template-columns: 30px 1fr; gap: 4px 10px; align-items: center; margin: 4px 0 10px; font-size: 14px; }
+.iconkey img { image-rendering: pixelated; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .leaf .btn { color: var(--ink); border-color: var(--gold); background: transparent; }
 .leaf .btn:hover { background: rgba(184,137,42,.18); }
@@ -1326,10 +1328,17 @@ function renderDrawer() {
       <p class="legend-p" style="color:var(--ink-soft)">${esc(D.meta.text)}</p>${HAS_MODERN ? modernLegendHtml() : ''}`;
   }
 }
+function legendIconsHtml() {
+  const L = D.meta.legend;
+  if (!Array.isArray(L) || !L.length) return '';
+  return `<p class="legend-p"><b>Icons.</b> Each picture stands for a kind of harm, so the icon hints at what happened before you open the card.</p>
+    <div class="iconkey">${L.filter((e) => e && e.icon in PIX.index).map((e) => `${icon(e.icon, 26)}<span>${esc(e.label)}</span>`).join('')}</div>`;
+}
 function modernLegendHtml() {
   const C = D.meta.coverage, placed = new Set(NODES.filter((n) => n.modern).map((n) => n.id));
   let h = `<div class="sect">Edition notes</div>
     <p class="legend-p"><b>Rings.</b> A solid ring marks a record: a ruling, an official report or an archive. A lighter ring marks attributed reporting. A dashed ring marks a concept from published research.</p>
+    ${legendIconsHtml()}
     <p class="legend-p"><b>Editorial.</b> Every point rests on cited sources. Why it sits in its circle is the editor's reading, and is labelled that way.</p>`;
   if (C && C.items && C.items.length) {
     const by = {}; C.items.forEach((i) => { (by[i.theme] = by[i.theme] || []).push(i); });

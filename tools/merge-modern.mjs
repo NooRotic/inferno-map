@@ -36,7 +36,7 @@ export function mergeModern(base, modern, baseSprites = {}, modernSprites = {}) 
   }
   const data = {
     ...base,
-    meta: { ...base.meta, modernEdition: true, coverage: modern.coverage || null },
+    meta: { ...base.meta, modernEdition: true, coverage: modern.coverage || null, legend: modern.legend || null },
     nodes: [...base.nodes, ...nodes],
     edges: [...(base.edges || []), ...edges],
     sources,
@@ -50,5 +50,13 @@ export function mergeModern(base, modern, baseSprites = {}, modernSprites = {}) 
     }
   }
   out.kindDefaults = { ...(baseSprites.kindDefaults || {}), ...(modernSprites.kindDefaults || {}) };
+  if (modern.legend != null) {
+    if (!Array.isArray(modern.legend)) throw new Error('legend must be a list of { icon, label }');
+    modern.legend.forEach((e, i) => {
+      const at = `legend entry ${i + 1}`;
+      if (!e || !(e.icon in out.sprites)) throw new Error(`${at}: unknown icon "${e && e.icon}"`);
+      if (typeof e.label !== 'string' || !e.label.trim()) throw new Error(`${at}: label must be a non-empty string`);
+    });
+  }
   return { data, sprites: out };
 }
