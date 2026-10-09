@@ -101,6 +101,11 @@ button { font: inherit; color: inherit; }
   background: var(--gold-hi); color: var(--ink); font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: .06em; line-height: 1.35; text-align: center; padding: 8px 12px; border-radius: 4px; box-shadow: 0 4px 14px rgba(0,0,0,.6); }
 #toast.on { opacity: 1; transform: translate(-50%, 0); }
 
+/* ---------- gesture pill: names the touch drag in progress ---------- */
+#gesture { position: absolute; left: 50%; top: calc(112px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -6px); z-index: 12; pointer-events: none; opacity: 0; transition: opacity .15s, transform .15s;
+  background: rgba(20,16,12,.82); color: var(--gold-hi); border: 1px solid var(--gold); font-family: var(--font-display); font-weight: 400; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
+#gesture.on { opacity: 1; transform: translate(-50%, 0); }
+
 /* ---------- first-visit coach marks ---------- */
 #coach { position: absolute; inset: 0; z-index: 15; pointer-events: none; }
 .coach-tip { position: absolute; max-width: 230px; background: var(--gold-hi); color: var(--ink); font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: .06em; line-height: 1.3;
@@ -214,6 +219,11 @@ button { font: inherit; color: inherit; }
   background: linear-gradient(0deg, rgba(8,6,4,.95) 60%, rgba(8,6,4,0)); display: grid; gap: 8px; }
 .ctrlrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ctrlrow .spacer { flex: 1; }
+.ctrlrow .opts { display: contents; }   /* the four view toggles flow with the row; View collapses them (their settings stay in force) */
+.ctrlrow.collapsed .opts { display: none; }
+#btnOpts .car { display: inline-block; font-size: 14px; line-height: 1; vertical-align: -1px; transition: transform .15s; }
+.ctrlrow.collapsed #btnOpts .car { transform: none; }
+.ctrlrow:not(.collapsed) #btnOpts .car { transform: rotate(180deg); }
 .scrub { display: grid; grid-template-columns: 1fr; align-items: center; border-top: 1px solid #4a3c2c; padding-top: 8px; }
 .readout { font-family: var(--font-display); font-size: 20px; color: var(--gold-hi); min-width: 86px; text-align: right; line-height: 1.05; font-weight: 600; padding-right: 6px; }
 .readout small { font-size: 10px; letter-spacing: .2em; color: var(--on-dark-soft); display: block; line-height: 1; font-weight: 400; }
@@ -233,8 +243,21 @@ button { font: inherit; color: inherit; }
 .tick.ms i { width: 2px; height: 13px; background: var(--gold); }
 .tick.now { color: var(--gold-hi); }
 .tick.now i { background: var(--gold-hi); }
-.hints { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 22px; font-size: 17px; font-style: italic; color: var(--on-dark); }
-.hints b { font-style: normal; font-family: var(--font-display); font-size: 13px; letter-spacing: .06em; color: var(--gold-hi); margin-right: 6px; }
+/* NAVI CONTROL GUIDE: one thin button in the footer; its list slides up from the footer edge */
+.guide-row { display: flex; justify-content: center; }
+#btnGuide { background: none; border: 0; padding: 2px 8px; cursor: pointer; font-family: var(--font-display); font-weight: 400; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--on-dark-soft); }
+#btnGuide:hover, #btnGuide[aria-expanded="true"] { color: var(--gold-hi); }
+#btnGuide .car { display: inline-block; margin-left: 4px; transition: transform .2s; }
+#btnGuide[aria-expanded="true"] .car { transform: rotate(180deg); }
+#guide { position: absolute; left: 50%; bottom: calc(var(--foot, 160px) + 6px); z-index: 14; width: min(560px, calc(100% - 24px)); max-height: calc(100% - var(--foot, 160px) - 90px); overflow: auto; padding: 14px 18px 12px;
+  background: rgba(14,10,7,.95); border: 1px solid #6a5a44; border-radius: 4px; box-shadow: 0 -6px 24px rgba(0,0,0,.55);
+  opacity: 0; visibility: hidden; transform: translate(-50%, 28px); transition: opacity .2s, transform .25s ease-out, visibility 0s .25s; }
+#guide.on { opacity: 1; visibility: visible; transform: translate(-50%, 0); transition-delay: 0s; }
+#guide h3 { margin: 0 0 8px; font-family: var(--font-display); font-weight: 400; font-size: 12px; letter-spacing: .24em; text-transform: uppercase; color: var(--gold-hi); }
+#guide dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; align-items: baseline; }
+#guide dt { font-family: var(--font-display); font-weight: 400; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold-hi); }
+#guide dd { margin: 0; font-size: 16px; line-height: 1.25; color: var(--on-dark); }
+@media (prefers-reduced-motion: reduce) { #guide { transition: none; } }
 
 #incipit { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgba(6,4,3,.72); }
 #incipit .leaf { max-width: 600px; max-height: calc(100% - 32px); overflow: auto; padding: 30px 34px 26px; }
@@ -268,7 +291,9 @@ button { font: inherit; color: inherit; }
   .itin.open::after { transform: rotate(-135deg); margin-top: -2px; }
   #detail { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 52%; z-index: 8; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
   #drawer { left: 16px; right: 16px; width: auto; top: calc(170px + env(safe-area-inset-top, 0px)); max-height: calc(100% - 350px); }
-  .hints { display: none; }
+  #guide { padding: 12px 14px 10px; }
+  #guide dl { gap: 5px 12px; }
+  #guide dd { font-size: 15px; }
   .readout { min-width: 92px; font-size: 19px; }
   .btn .key { display: none; }
   #incipit .leaf { padding: 22px 20px; }
@@ -281,6 +306,12 @@ button { font: inherit; color: inherit; }
   .ctrlrow .spacer { display: none; }
   #btnFly { display: none; }   /* fly mode needs a keyboard */
   .readout { order: 9; margin-left: auto; }
+  .ctrlrow.collapsed .readout { display: none; }   /* closed: Play, View more and Whole Earth share one row; the itinerary card above already says which canto */   /* with the toggles hidden, Play, View, the canto and Whole Earth share one row */
+  /* closed: always one row; the three buttons share it, and a label drops to two lines before the row would wrap */
+  .ctrlrow.collapsed { flex-wrap: nowrap; }
+  .ctrlrow.collapsed .btn { flex: 1 1 auto; min-width: 0; white-space: normal; text-align: center; line-height: 1.15; padding-inline: 6px; }
+  .guide-row { justify-content: center; width: 100%; }
+  @media (max-width: 380px) { .ctrlrow .btn { padding-inline: 5px; letter-spacing: .03em; } .ctrlrow.collapsed { gap: 4px; } }   /* small phones: keep the footer inside the screen */
   .tick:not(.ms) { pointer-events: none; }
   .tick.ms { padding: 4px 9px; }
 }
@@ -339,10 +370,13 @@ button { font: inherit; color: inherit; }
     <div class="ctrlrow">
       <button class="btn" id="btnPlay" aria-pressed="false"><span id="playLbl">▶ Play the journey</span> <span class="key">space</span></button>
       <button class="btn" id="btnFly" aria-pressed="false">Fly <span class="key">G</span></button>
-      <button class="btn" id="btnIcons" aria-pressed="true">Icons <span class="key">I</span></button>
-      <button class="btn" id="btnLinks" aria-pressed="true">Links</button>
-      <button class="btn" id="btnLabels" aria-pressed="true">Labels</button>
-      <button class="btn" id="btnMotion" aria-pressed="true" title="Animated scenes, moving crowds and flowing water">Motion</button>
+      <button class="btn" id="btnOpts" aria-expanded="true" aria-controls="viewOpts" title="Show or hide the Icons, Links, Labels and Motion buttons"><span id="optsLbl">View more</span> <span class="car" aria-hidden="true">▾</span></button>
+      <span class="opts" id="viewOpts">
+        <button class="btn" id="btnIcons" aria-pressed="true">Icons <span class="key">I</span></button>
+        <button class="btn" id="btnLinks" aria-pressed="true">Links</button>
+        <button class="btn" id="btnLabels" aria-pressed="true">Labels</button>
+        <button class="btn" id="btnMotion" aria-pressed="true" title="Animated scenes, moving crowds and flowing water">Motion</button>
+      </span>
       <span class="spacer"></span>
       <div class="readout" id="readout"><small>CANTO</small>I</div>
       <button class="btn" id="btnReset">Whole Earth <span class="key">R</span></button>
@@ -353,9 +387,11 @@ button { font: inherit; color: inherit; }
         <div class="ticks" id="ticks"></div>
       </div>
     </div>
-    <div class="hints" id="hints"></div>
+    <div class="guide-row"><button id="btnGuide" aria-expanded="false" aria-controls="guide">Navi Control Guide <span class="car" aria-hidden="true">▴</span></button></div>
   </footer>
+  <div id="guide" role="region" aria-label="Navigation controls" aria-hidden="true"></div>
 
+  <div id="gesture" aria-hidden="true"></div>
   <div id="toast" role="status" aria-live="polite"></div>
 
   <div id="incipit" hidden>
@@ -1353,14 +1389,29 @@ function buildUI() {
   $('#btnIcons').addEventListener('click', toggleIcons);
   $('#btnLinks').addEventListener('click', (e) => { S.links = !S.links; e.currentTarget.setAttribute('aria-pressed', S.links); refreshEdges(); });
   $('#btnLabels').addEventListener('click', (e) => { S.labels = !S.labels; e.currentTarget.setAttribute('aria-pressed', S.labels); });
+  const row = document.querySelector('.ctrlrow'), setOpts = (open) => { row.classList.toggle('collapsed', !open); $('#btnOpts').setAttribute('aria-expanded', open); $('#optsLbl').textContent = open ? 'Hide' : 'View more'; };
+  setOpts(false);   // closed by default; an explicit open is remembered
+  try { setOpts(localStorage.getItem('inferno-opts') === '1'); } catch (err) {}
+  $('#btnOpts').addEventListener('click', () => { const open = row.classList.contains('collapsed'); setOpts(open); try { localStorage.setItem('inferno-opts', open ? '1' : '0'); } catch (err) {} });
   $('#btnMotion').setAttribute('aria-pressed', S.motion);
   $('#btnMotion').addEventListener('click', (e) => { S.motion = !S.motion; e.currentTarget.setAttribute('aria-pressed', S.motion); try { localStorage.setItem('inferno-motion', S.motion ? '1' : '0'); } catch (err) {}
     toast(S.motion ? 'Motion on: crowds march, rivers flow, the falls pour. Tap a figure to see who they are and why' : 'Motion off: crowds, rivers and the falls hold still'); });
   $('#btnEnter').addEventListener('click', closeIncipit);
   $('#btnTour').addEventListener('click', () => { closeIncipit(true); clearSel(); setCanto(1); startPlay(); });
   const touch = matchMedia('(pointer: coarse)').matches;
-  $('#hints').innerHTML = touch ? '<span><b>1</b>drag to turn</span><span><b>2</b>pinch to zoom or pan</span>'
-    : '<span><b>Drag</b>turn the globe</span><span><b>Right-drag</b>pan</span><span><b>Scroll</b>zoom</span><span><b>F</b>look closer</span><span><b>G</b>fly (WASD, Q/E)</span><span><b>I</b>icons or dots</span><span><b>Esc</b>clear</span>';
+  /* NAVI CONTROL GUIDE: the list differs by input; the footer button slides it up, Esc or a tap outside puts it away */
+  const GUIDE = touch
+    ? [['1 finger drag', 'Camera: turn the globe'], ['2 finger drag', 'Strafe: slide the view sideways and up or down'], ['Pinch', 'Zoom in and out'],
+       ['Tap', 'Select a figure or icon and open its card'], ['Tap empty map', 'Close the card'], ['Right-edge slider', 'Depth: travel down the funnel'], ['Canto bar', 'Scrub the journey, or tap a numeral to jump']]
+    : [['Drag', 'Camera: turn the globe'], ['Shift + drag', 'Strafe: slide the view (right or middle drag does the same)'], ['Scroll', 'Zoom in and out'],
+       ['W A S D / arrows', 'Move the view (Shift for faster, Q and E for down and up)'], ['F', 'Look closer at the selected point'], ['G', 'Fly mode (drag to look, W and S to go)'],
+       ['I', 'Icons or dots'], ['R', 'Whole Earth'], ['Space', 'Play or pause the journey'], ['[ ]  or  , .', 'Previous or next canto'], ['Esc', 'Clear the selection']];
+  const guide = $('#guide'), gbtn = $('#btnGuide');
+  guide.innerHTML = '<h3>Navi control guide</h3><dl>' + GUIDE.map(([k, d]) => '<dt>' + k + '</dt><dd>' + d + '</dd>').join('') + '</dl>';
+  const setGuide = (open) => { guide.classList.toggle('on', open); guide.setAttribute('aria-hidden', !open); gbtn.setAttribute('aria-expanded', open); };
+  gbtn.addEventListener('click', () => setGuide(!guide.classList.contains('on')));
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && guide.classList.contains('on')) { setGuide(false); e.stopPropagation(); } }, true);
+  addEventListener('pointerdown', (e) => { if (guide.classList.contains('on') && !guide.contains(e.target) && !gbtn.contains(e.target)) setGuide(false); }, true);
   refreshEdges();
 }
 
@@ -1411,7 +1462,15 @@ function bindControls(c) {
     if (drag.btn === 2 || drag.btn === 1 || drag.shift) pan(dx, dy);
     else { cam.g.az += dx * 0.006; cam.g.el = Math.max(-1.45, Math.min(1.45, cam.g.el + dy * 0.005)); }
   });
-  const up = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; if (ptrs.size === 0) { c.classList.remove('dragging'); if (moved < 6) clickAt(e.clientX, e.clientY); drag = null; } };
+  /* touch only: once a drag really starts, a small pill names what the gesture is doing; it fades shortly after release */
+  const gest = $('#gesture'); let gestT = 0;
+  const gesture = (txt) => { gest.textContent = txt; gest.classList.add('on'); clearTimeout(gestT); };
+  const gestureOff = () => { clearTimeout(gestT); gestT = setTimeout(() => gest.classList.remove('on'), 700); };
+  c.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'touch' || !ptrs.has(e.pointerId) || moved < 6) return;
+    gesture(ptrs.size >= 2 ? 'Strafe + zoom' : S.fly ? 'Look' : 'Camera');
+  });
+  const up = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; if (ptrs.size === 0) { c.classList.remove('dragging'); gestureOff(); if (moved < 6) clickAt(e.clientX, e.clientY); drag = null; } };
   c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
   c.addEventListener('wheel', (e) => { e.preventDefault(); if (S.fly) { cam.pos.addScaledVector(flyDir(), -e.deltaY * 0.08); return; } zoomBy(Math.exp(e.deltaY * 0.0012)); }, { passive: false });
   addEventListener('keydown', (e) => {
