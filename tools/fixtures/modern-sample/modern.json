@@ -1,8 +1,91 @@
 {
   "nodes": [
-    { "id": "fx-event", "n": "Fixture event (TEST)", "k": "event", "icon": "fx_scroll", "lv": "b8", "a": 100, "r": 0.5, "unlocks": 18, "echoes": "b8", "when": "TEST 1900", "place": "Nowhere (test)", "summary": "TEST FIXTURE: placeholder text for engine tests that describes no real event. <b>markup</b> & \"quotes\" must show as plain text.", "conf": "record", "parallel": "TEST FIXTURE parallel: the editorial voice.", "sources": ["fx-source"], "verified": { "by": "fixture", "date": "2000-01-01" } },
-    { "id": "fx-reported", "n": "Fixture reported event (TEST)", "k": "event", "icon": "fx_scroll", "lv": "b8", "a": 112, "r": 0.3, "unlocks": 18, "echoes": "b8", "when": "TEST 1950", "asOf": "2000-01-01", "summary": "TEST FIXTURE: a reported-confidence event, to see the lighter ring.", "conf": "reported", "parallel": "TEST FIXTURE parallel.", "sources": ["fx-source"], "verified": { "by": "fixture", "date": "2000-01-01" } },
-    { "id": "fx-pattern", "n": "Fixture pattern (TEST)", "k": "pattern", "icon": "fx_scroll", "lv": "limbo", "a": 100, "r": 0.5, "unlocks": 4, "echoes": "limbo", "term": "Test term", "termStatus": "popular", "definition": "TEST FIXTURE: a definition that describes no real behavior.", "recognize": ["TEST sign one", "TEST sign two"], "learnMore": [{ "t": "Example learn-more link", "u": "https://example.test/learn" }], "theme": "fx", "conf": "concept", "parallel": "TEST FIXTURE parallel for a pattern.", "sources": ["fx-source"], "verified": { "by": "fixture", "date": "2000-01-01" } }
+    {
+      "id": "fx-event",
+      "n": "Fixture event (TEST)",
+      "k": "event",
+      "icon": "fx_scroll",
+      "lv": "b8",
+      "a": 100,
+      "r": 0.5,
+      "unlocks": 18,
+      "echoes": "b8",
+      "when": "TEST 1900",
+      "place": "Nowhere (test)",
+      "summary": "TEST FIXTURE: placeholder text for engine tests that describes no real event. <b>markup</b> & \"quotes\" must show as plain text.",
+      "conf": "record",
+      "parallel": "TEST FIXTURE parallel: the editorial voice.",
+      "sources": [
+        "fx-source"
+      ],
+      "verified": {
+        "by": "fixture",
+        "date": "2000-01-01"
+      }
+    },
+    {
+      "id": "fx-reported",
+      "n": "Fixture reported event (TEST)",
+      "k": "event",
+      "icon": "fx_scroll",
+      "lv": "b8",
+      "a": 112,
+      "r": 0.3,
+      "unlocks": 18,
+      "echoes": "b8",
+      "when": "TEST 1950",
+      "asOf": "2000-01-01",
+      "summary": "TEST FIXTURE: a reported-confidence event, to see the lighter ring.",
+      "conf": "reported",
+      "parallel": "TEST FIXTURE parallel.",
+      "sources": [
+        "fx-source"
+      ],
+      "verified": {
+        "by": "fixture",
+        "date": "2000-01-01"
+      }
+    },
+    {
+      "id": "fx-pattern",
+      "n": "Fixture pattern (TEST)",
+      "k": "pattern",
+      "icon": "fx_scroll",
+      "lv": "limbo",
+      "a": 100,
+      "r": 0.5,
+      "unlocks": 4,
+      "echoes": "limbo",
+      "term": "Test term",
+      "termStatus": "popular",
+      "definition": "TEST FIXTURE: a definition that describes no real behavior.",
+      "recognize": [
+        "TEST sign one",
+        "TEST sign two"
+      ],
+      "learnMore": [
+        {
+          "t": "Example learn-more link",
+          "u": "https://example.test/learn"
+        }
+      ],
+      "theme": "fx",
+      "conf": "concept",
+      "parallel": "TEST FIXTURE parallel for a pattern.",
+      "sources": [
+        "fx-source"
+      ],
+      "verified": {
+        "by": "fixture",
+        "date": "2000-01-01"
+      }
+    }
   ],
-  "edges": []
+  "edges": [],
+  "legend": [
+    {
+      "icon": "fx_scroll",
+      "label": "TEST legend entry"
+    }
+  ]
 }

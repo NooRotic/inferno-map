@@ -74,7 +74,7 @@ if (dataDir) {
   const dir = resolve(dataDir);
   const rd = async (f, d) => { try { return JSON.parse(await readFile(join(dir, f), 'utf8')); } catch (e) { if (e.code === 'ENOENT') return d; throw e; } };
   const mod = await rd('modern.json', { nodes: [] });
-  const modern = { nodes: mod.nodes || [], edges: mod.edges || [], sources: await rd('sources.json', []), coverage: await rd('coverage.json', null) };
+  const modern = { nodes: mod.nodes || [], edges: mod.edges || [], sources: await rd('sources.json', []), coverage: await rd('coverage.json', null), legend: mod.legend };
   const baseData = JSON.parse(await readFile(join(root, 'src/inferno.json'), 'utf8'));
   const baseSprites = JSON.parse(await readFile(join(root, 'src/sprites.json'), 'utf8'));
   const { data, sprites } = mergeModern(baseData, modern, baseSprites, await rd('modern-sprites.json', {}));

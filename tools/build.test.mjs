@@ -25,6 +25,7 @@ test('--data merges nodes, sources and sprites; --site/--title/--desc swap the p
   assert.ok(d.nodes.some((n) => n.id === 'fx-event' && n.modern === true));
   assert.equal(d.sources['fx-source'].publisher, 'Example Publisher');
   assert.equal(d.meta.coverage.items.length, 2);
+  assert.deepEqual(d.meta.legend, [{ icon: 'fx_scroll', label: 'TEST legend entry' }]);
   assert.ok('fx_scroll' in JSON.parse(dist('sprites.json')).sprites);
   const html = dist('index.html').toString();
   assert.match(html, /og:url" content="https:\/\/example\.test\/x\/"/);
