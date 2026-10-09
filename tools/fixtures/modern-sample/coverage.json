@@ -1,0 +1,8 @@
+{
+  "themes": { "fx": "Fixture theme (TEST)" },
+  "contactUrl": "https://example.test/contact",
+  "items": [
+    { "id": "fx-event", "t": "Fixture event on the map (TEST)", "theme": "fx", "kind": "event", "status": "shipped" },
+    { "id": "fx-queued", "t": "Fixture item still queued (TEST)", "theme": "fx", "kind": "event", "status": "queued" }
+  ]
+}

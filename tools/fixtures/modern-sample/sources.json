@@ -1,0 +1,3 @@
+[
+  { "id": "fx-source", "type": "official-report", "title": "Test fixture source (not a real document)", "publisher": "Example Publisher", "date": "2000-01-01", "url": "https://example.test/source", "archive": "https://example.test/archive", "retrieved": "2000-01-02" }
+]

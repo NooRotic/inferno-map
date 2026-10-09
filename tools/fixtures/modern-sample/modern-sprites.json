@@ -1,0 +1,23 @@
+{
+  "sprites": {
+    "fx_scroll": { "grid": [
+      "................",
+      "................",
+      "..kkkkkkkkkkkk..",
+      ".kwwwwwwwwwwwwk.",
+      ".kwkkkkkkkkkkwk.",
+      ".kwwwwwwwwwwwwk.",
+      ".kwkkkkkkkkwwwk.",
+      ".kwwwwwwwwwwwwk.",
+      ".kwkkkkkkkkkkwk.",
+      ".kwwwwwwwwwwwwk.",
+      ".kwkkkkkkwwwwwk.",
+      ".kwwwwwwwwwwwwk.",
+      "..kkkkkkkkkkkk..",
+      "................",
+      "................",
+      "................"
+    ] }
+  },
+  "kindDefaults": { "mevent": "fx_scroll", "mpattern": "fx_scroll" }
+}
