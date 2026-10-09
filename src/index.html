@@ -189,6 +189,11 @@ button { font: inherit; color: inherit; }
 .src b { font-weight: 600; font-size: 15px; }
 .src span { color: var(--ink-soft); font-size: 13px; }
 .src.arc { border-left-color: #c9b48a; font-size: 13px; padding-left: 14px; }
+.cov summary { cursor: pointer; font-size: 15px; padding: 2px 0; }
+.cov small { color: var(--ink-soft); }
+.cov ul { margin: 4px 0 8px 18px; padding: 0; font-size: 14px; }
+.cov li { color: var(--ink-soft); }
+.cov li.done { color: var(--ink); font-weight: 600; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .leaf .btn { color: var(--ink); border-color: var(--gold); background: transparent; }
 .leaf .btn:hover { background: rgba(184,137,42,.18); }
@@ -1310,16 +1315,31 @@ function renderDrawer() {
         <span class="swatch" style="background:#4a443e"></span><span>In shadow: not yet reached</span>
         <span class="swatch" style="background:#d0442f"></span><span>Rubric: the circle you chose</span>
         ${(D.meta.bands || []).map((b) => `<span class="swatch" style="background:${b.css}"></span><span>${esc(b.la)} · ${esc(b.name)}: floor tint, label edge</span>`).join('')}
-        ${Object.entries(KIND).map(([k, K]) => `<span class="ringsw" style="--c:${K.css}"></span><span>${K.la} · ${K.en}</span>`).join('')}
-        ${['pair', 'betray', 'cause', 'fate', 'echo'].map((k) => `<span class="swatch" style="background:${EDGE[k][0]};height:3px"></span><span>${EDGE[k][1]}</span>`).join('')}
+        ${Object.entries(KIND).filter(([, K]) => !K.modern || HAS_MODERN).map(([k, K]) => `<span class="ringsw" style="--c:${K.css}"></span><span>${K.la} · ${K.en}</span>`).join('')}
+        ${['pair', 'betray', 'cause', 'fate', 'echo'].concat(HAS_MODERN ? ['modern'] : []).map((k) => `<span class="swatch" style="background:${EDGE[k][0]};height:3px"></span><span>${EDGE[k][1]}</span>`).join('')}
       </div>
       <p class="legend-p"><b>Stated in the text</b> means Dante says it. <b>Interpretive</b> means it comes from tradition or commentators.</p>
       <p class="legend-p">${esc(D.meta.scale)}</p>
       ${D.meta.measures.map((m) => `<p class="legend-p"><span class="cite">${m.cite}</span> ${esc(m.text)}</p>`).join('')}
       <p class="legend-p">The descent always turns left, except at the two right turns marked <i>dextrorsum</i>.</p>
       <p class="legend-p">Points come from <span class="cite">inferno.json</span> and pictures from <span class="cite">sprites.json</span>. Edit either file to add, remove or redraw.</p>
-      <p class="legend-p" style="color:var(--ink-soft)">${esc(D.meta.text)}</p>`;
+      <p class="legend-p" style="color:var(--ink-soft)">${esc(D.meta.text)}</p>${HAS_MODERN ? modernLegendHtml() : ''}`;
   }
+}
+function modernLegendHtml() {
+  const C = D.meta.coverage, placed = new Set(NODES.filter((n) => n.modern).map((n) => n.id));
+  let h = `<div class="sect">Edition notes</div>
+    <p class="legend-p"><b>Rings.</b> A solid ring marks a record: a ruling, an official report or an archive. A lighter ring marks attributed reporting. A dashed ring marks a concept from published research.</p>
+    <p class="legend-p"><b>Editorial.</b> Every point rests on cited sources. Why it sits in its circle is the editor's reading, and is labelled that way.</p>`;
+  if (C && C.items && C.items.length) {
+    const by = {}; C.items.forEach((i) => { (by[i.theme] = by[i.theme] || []).push(i); });
+    const done = C.items.filter((i) => placed.has(i.id)).length, th = C.themes || {};
+    h += `<div class="sect">What is not here yet</div>
+      <p class="legend-p">${done} of ${C.items.length} entries on this list are on the map. The rest are queued, not left out on purpose: a missing entry is a gap in the work, never a judgment that it matters less.</p>`;
+    h += Object.keys(by).map((t) => `<details class="cov"><summary>${esc(th[t] || t)} <small>${by[t].filter((i) => placed.has(i.id)).length} / ${by[t].length}</small></summary><ul>${by[t].map((i) => `<li class="${placed.has(i.id) ? 'done' : ''}">${esc(i.t)}</li>`).join('')}</ul></details>`).join('');
+    if (C.contactUrl && /^https?:\/\//i.test(C.contactUrl)) h += `<p class="legend-p"><a href="${esc(C.contactUrl)}" target="_blank" rel="noopener noreferrer">Suggest an addition</a></p>`;
+  }
+  return h;
 }
 function renderCodexRows() {
   const q = ($('#q').value || '').toLowerCase().trim(); let html = '', lastLv = '';
