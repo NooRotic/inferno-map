@@ -903,8 +903,8 @@ function waypointIndexAt(c) { let k = 0; D.path.forEach((w, i) => { if (w.c <= c
 /* ======================= markers (pixel icons on vellum roundels) ======================= */
 let markerMat, markerGeo, stems;
 function buildMarkers() {
-  const n = NODES.length, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), shape = new Float32Array(n), state = new Float32Array(n), size = new Float32Array(n), spr = new Float32Array(n);
-  NODES.forEach((nd, i) => { pos.set([nd.pos.x, nd.pos.y, nd.pos.z], i * 3); const k = KIND[nd.k]; col.set(k.ring, i * 3); shape[i] = k.shape; size[i] = nd.k === 'guardian' ? 1.1 : 1; spr[i] = PIX.index[nd.sprite]; });
+  const n = NODES.length, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), shape = new Float32Array(n), state = new Float32Array(n), size = new Float32Array(n), spr = new Float32Array(n), conf = new Float32Array(n);
+  NODES.forEach((nd, i) => { pos.set([nd.pos.x, nd.pos.y, nd.pos.z], i * 3); const k = KIND[nd.k]; col.set(k.ring, i * 3); shape[i] = k.shape; size[i] = nd.k === 'guardian' ? 1.1 : 1; spr[i] = PIX.index[nd.sprite]; conf[i] = nd.conf === 'reported' ? 1 : nd.conf === 'concept' ? 2 : 0; });
   markerGeo = new THREE.BufferGeometry();
   markerGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   markerGeo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
@@ -912,15 +912,16 @@ function buildMarkers() {
   markerGeo.setAttribute('aState', new THREE.BufferAttribute(state, 1));
   markerGeo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
   markerGeo.setAttribute('aSprite', new THREE.BufferAttribute(spr, 1));
+  markerGeo.setAttribute('aConf', new THREE.BufferAttribute(conf, 1));
   const atlas = new THREE.CanvasTexture(PIX.canvas); atlas.magFilter = atlas.minFilter = THREE.NearestFilter; atlas.generateMipmaps = false;
   markerMat = new THREE.ShaderMaterial({
     uniforms: { uScale: { value: innerHeight * renderer.getPixelRatio() }, uDpr: { value: renderer.getPixelRatio() }, uTime: { value: 0 },
       uIcons: { value: 1 }, uAtlas: { value: atlas }, uGrid: { value: new THREE.Vector2(PIX.COLS, PIX.ROWS) } },
-    vertexShader: `attribute vec3 aColor; attribute float aShape; attribute float aState; attribute float aSize; attribute float aSprite;
-      uniform float uScale; uniform float uDpr; uniform float uIcons; varying vec3 vColor; varying float vShape; varying float vState; varying float vSprite;
+    vertexShader: `attribute vec3 aColor; attribute float aShape; attribute float aState; attribute float aSize; attribute float aSprite; attribute float aConf;
+      uniform float uScale; uniform float uDpr; uniform float uIcons; varying vec3 vColor; varying float vShape; varying float vState; varying float vSprite; varying float vConf;
       void main(){ if (aSize < 0.01) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; return; }
         vec4 mv = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * mv;
-        vColor = aColor; vShape = aShape; vState = aState; vSprite = aSprite;
+        vColor = aColor; vShape = aShape; vState = aState; vSprite = aSprite; vConf = aConf;
         if (uIcons > 0.5) {
           float want = clamp(aSize * uScale * 1.3 / -mv.z, 32.0 * uDpr, 84.0 * uDpr);
           if (aState < 0.5) want *= 0.85; if (aState > 1.5) want *= 1.2; if (aState > 2.5) want *= 1.15;
@@ -931,7 +932,7 @@ function buildMarkers() {
         if (aState < 0.5) s *= 0.8; if (aState > 1.5) s *= 1.3; if (aState > 2.5) s *= 1.2;
         gl_PointSize = s; }`,
     fragmentShader: `uniform float uTime; uniform float uIcons; uniform sampler2D uAtlas; uniform vec2 uGrid;
-      varying vec3 vColor; varying float vShape; varying float vState; varying float vSprite;
+      varying vec3 vColor; varying float vShape; varying float vState; varying float vSprite; varying float vConf;
       const vec3 VELLUM = vec3(0.94, 0.89, 0.80); const vec3 INK = vec3(0.10, 0.07, 0.04); const vec3 GOLD = vec3(0.88, 0.73, 0.39);
       void main(){
         vec2 pc = gl_PointCoord; float dd = length(pc - 0.5) * 2.0; bool sel = vState > 2.5; bool ahead = vState < 0.5;
@@ -944,7 +945,10 @@ function buildMarkers() {
           }
           if (dd > 0.99) discard;
           if (dd > 0.93) { gl_FragColor = vec4(sel ? GOLD : INK, 1.0); return; }
-          if (dd > 0.82) { vec3 rc = sel ? mix(GOLD, vec3(1.0), 0.25 + 0.25 * sin(uTime * 5.0)) : vColor; gl_FragColor = vec4(ahead ? rc * 0.6 : rc, 1.0); return; }
+          if (dd > 0.82) { vec3 rc = sel ? mix(GOLD, vec3(1.0), 0.25 + 0.25 * sin(uTime * 5.0)) : vColor;
+            if (!sel && vConf > 0.5 && vConf < 1.5) rc = mix(rc, VELLUM, 0.45);                          // reported: a lighter ring
+            if (!sel && vConf > 1.5 && fract(atan(pc.y - 0.5, pc.x - 0.5) * 1.2732395) < 0.5) rc = INK;   // concept: a dashed ring (8 dashes)
+            gl_FragColor = vec4(ahead ? rc * 0.6 : rc, 1.0); return; }
           gl_FragColor = vec4(ahead ? VELLUM * 0.55 : VELLUM, 0.94); return;
         }
         vec2 p = pc * 2.0 - 1.0; float d;
@@ -971,8 +975,9 @@ function buildEdges() {
     const mid = a.clone().lerp(b, 0.5), out = V(mid.x, 0, mid.z).normalize().multiplyScalar(d * 0.12);
     const ctrl = mid.clone().add(out).add(V(0, Math.min(40, d * 0.35), 0));
     const pts = new THREE.QuadraticBezierCurve3(a, ctrl, b).getPoints(Math.max(12, Math.round(d)));
-    const m = new THREE.LineBasicMaterial({ color: new THREE.Color((EDGE[e.t] || EDGE.echo)[0]), transparent: true, opacity: 0.3, depthTest: false });
-    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), m); line.renderOrder = 5; scene.add(line);
+    const col = new THREE.Color((EDGE[e.t] || EDGE.echo)[0]), dashed = e.t === 'modern';
+    const m = dashed ? new THREE.LineDashedMaterial({ color: col, dashSize: 1.6, gapSize: 1.2, transparent: true, opacity: 0.3, depthTest: false }) : new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.3, depthTest: false });
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), m); if (dashed) line.computeLineDistances(); line.renderOrder = 5; scene.add(line);
     edgeObjs.push({ e, line, m });
   });
 }
