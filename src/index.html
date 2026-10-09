@@ -177,6 +177,18 @@ button { font: inherit; color: inherit; }
 .linkbtn:hover { background: rgba(120,80,30,.1); }
 .linkbtn b { font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 6px; }
 .linkbtn span { color: var(--ink-soft); font-size: 14px; }
+.badge.conf-record { color: #1f5f66; border-color: #5fa8ad; }
+.badge.conf-reported { color: #6a5a2a; border-color: #bda868; }
+.badge.conf-concept { color: #4a3a86; border-color: #a99ad8; }
+.badge.editorial { font-style: normal; font-family: var(--font-display); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--rubric); border-color: #d49a8a; margin-left: 6px; }
+.parallel { font-style: italic; font-size: 16px; line-height: 1.45; margin: 4px 0 8px; }
+.recog { margin: 4px 0 8px 18px; padding: 0; font-size: 16px; line-height: 1.4; }
+.srcs { display: grid; gap: 4px; }
+.src { display: grid; gap: 1px; padding: 4px 8px; border-left: 3px solid #5fc4c9; color: var(--ink); text-decoration: none; }
+.src:hover { background: rgba(120,80,30,.1); }
+.src b { font-weight: 600; font-size: 15px; }
+.src span { color: var(--ink-soft); font-size: 13px; }
+.src.arc { border-left-color: #c9b48a; font-size: 13px; padding-left: 14px; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .leaf .btn { color: var(--ink); border-color: var(--gold); background: transparent; }
 .leaf .btn:hover { background: rgba(184,137,42,.18); }
@@ -1209,10 +1221,33 @@ function selectLevel(L, fly = true) {
 }
 const bandBadge = (L) => (bandOf(L) ? `<span class="badge" style="border-color:${bandOf(L).css};border-left-width:4px">${esc(bandOf(L).la)} · ${esc(bandOf(L).name)}</span>` : '');
 function linkName(id) { return NODE[id] ? NODE[id].n : LV[id] ? `${LV[id].name}` : id; }
+const CONF_LABEL = { record: 'Record: ruling, official report or archive', reported: 'Attributed reporting', concept: 'Concept from published research' };
+const safeUrl = (u) => (/^https?:\/\//i.test(u) ? u : '#');   // sources are checked at build time too; this is the last line of defence
+const srcChip = (s) => `<a class="src" href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener noreferrer"><b>${esc(s.title)}</b><span>${esc(s.publisher)} · ${esc(s.date)}</span></a>${s.archive ? `<a class="src arc" href="${esc(safeUrl(s.archive))}" target="_blank" rel="noopener noreferrer">archived copy</a>` : ''}`;
+function renderModernCard(n) {
+  const L = LV[n.lv], K = KIND[n.k], pattern = n.k === 'mpattern', srcs = (n.sources || []).map((id) => SRC[id]).filter(Boolean);
+  const E = n.echoes && (NODE[n.echoes] || LV[n.echoes]) ? n.echoes : null;
+  return `<button class="x" aria-label="Close">×</button>
+    <div class="dhead"><div class="roundel" style="--ring:${K.css}">${icon(n.sprite, 64)}</div>
+      <div><div class="eyebrow">${K.la} · ${K.en}</div><h2>${esc(n.n)}</h2>
+      <div class="where">${esc(L.la || L.name)} · <span class="cite">${esc(n.cite)}</span></div></div></div>
+    <div class="badges"><span class="badge conf-${esc(n.conf)}">${esc(CONF_LABEL[n.conf] || n.conf || '')}</span>${n.asOf ? `<span class="badge">as of ${esc(n.asOf)}</span>` : ''}${pattern && n.termStatus ? `<span class="badge">${n.termStatus === 'popular' ? 'popular usage' : 'scholarly term'}</span>` : ''}${bandBadge(L)}</div>
+    <div class="sect">What the record shows</div>
+    <p class="note">${esc(n.note)}</p>
+    ${n.place ? `<p class="where">${esc(n.place)}</p>` : ''}
+    ${pattern && n.recognize && n.recognize.length ? `<div class="sect">Recognize it</div><ul class="recog">${n.recognize.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
+    <div class="sect">Sources</div><div class="srcs">${srcs.map(srcChip).join('')}</div>
+    ${pattern && n.learnMore && n.learnMore.length ? `<div class="sect">Learn more</div><div class="srcs">${n.learnMore.map((m) => `<a class="src" href="${esc(safeUrl(m.u))}" target="_blank" rel="noopener noreferrer"><b>${esc(m.t)}</b></a>`).join('')}</div>` : ''}
+    <div class="sect">Why it sits here <span class="badge editorial">editorial</span></div>
+    <p class="parallel">${esc(n.parallel)}</p>
+    ${E ? `<div class="links"><button class="linkbtn" data-go="${esc(E)}" style="--c:#5fc4c9"><b>${NODE[E] ? icon(NODE[E].sprite, 22) : ''}Echoes: ${esc(linkName(E))}</b><span>${NODE[E] ? `<span class="cite">${esc(NODE[E].cite)}</span>` : 'the circle whose sin in the poem this echoes'}</span></button></div>` : ''}
+    <div class="actions"><button class="btn" data-act="center">Look closer <span class="key">F</span></button><button class="btn" data-act="jump">Journey here</button></div>`;
+}
 function renderDetail() {
   const el = $('#detail');
   if (!S.sel && !S.selLevel) { el.hidden = true; return; }
   el.hidden = false;
+  if (S.sel && S.sel.modern) { el.innerHTML = renderModernCard(S.sel); return; }
   if (S.sel) {
     const n = S.sel, L = LV[n.lv], met = nodeMet(n), K = KIND[n.k];
     el.innerHTML = `<button class="x" aria-label="Close">×</button>
