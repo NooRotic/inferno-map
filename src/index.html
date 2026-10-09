@@ -1341,9 +1341,20 @@ function modernLegendHtml() {
   }
   return h;
 }
+/* with modern points merged in, each one follows the last book point on its circle, so circle headers are not repeated at the tail */
+function indexOrder(list) {
+  if (!HAS_MODERN) return list;
+  const out = list.filter((n) => !n.modern);
+  list.filter((n) => n.modern).forEach((m) => {
+    let at = -1; out.forEach((b, i) => { if (b.lv === m.lv) at = i; });
+    if (at < 0) { at = out.length - 1; for (let i = 0; i < out.length; i++) if (LV[out[i].lv].idx > LV[m.lv].idx) { at = i - 1; break; } }
+    out.splice(at + 1, 0, m);
+  });
+  return out;
+}
 function renderCodexRows() {
   const q = ($('#q').value || '').toLowerCase().trim(); let html = '', lastLv = '';
-  NODES.filter((n) => live(n) && (!q || (n.n + ' ' + n.note + ' ' + n.cite).toLowerCase().includes(q))).forEach((n) => {
+  indexOrder(NODES.filter((n) => live(n) && (!q || (n.n + ' ' + n.note + ' ' + n.cite).toLowerCase().includes(q)))).forEach((n) => {
     if (n.lv !== lastLv) { html += `<div class="grouphead">${esc(LV[n.lv].la || LV[n.lv].name)}</div>`; lastLv = n.lv; }
     html += `<button class="row ${nodeMet(n) ? '' : 'dim'}" data-id="${n.id}">${icon(n.sprite, 26)}<span>${esc(n.n)}</span><span class="cite">${esc(n.cite)}</span></button>`;
   });
@@ -1472,6 +1483,7 @@ function buildUI() {
       S.now = !S.now; btnNow.setAttribute('aria-pressed', S.now);
       try { localStorage.setItem('inferno-now', S.now ? '1' : '0'); } catch (err) {}
       if (!S.now && S.sel && S.sel.modern) clearSel(); else refreshAll();
+      if (S.tab !== 'map' && S.tab !== 'intro') renderDrawer();   // an open Index or Clavis follows the toggle
       toast(S.now ? "Now on: documented events and patterns sit beside Dante's own points" : "Now off: Dante's points only");
     });
   }
@@ -1744,7 +1756,7 @@ function updateLabels() {
       place(label('L:' + L.id, txt, 'level ' + st), s, 6, 0);
     });
     const near = Math.max(40, Math.min(90, cam.dist * 1.6));
-    NODES.filter((n) => n !== S.sel).filter((n) => n === S.hover || (S.sel && S.sel.links.some((l) => l.to === n.id)) || (cam.dist < 110 && (!S.fadeLv || n.lv === S.fadeLv) && camera.position.distanceTo(n.pos) < near)).slice(0, 40).forEach((n) => {
+    NODES.filter((n) => n !== S.sel && live(n)).filter((n) => n === S.hover || (S.sel && S.sel.links.some((l) => l.to === n.id)) || (cam.dist < 110 && (!S.fadeLv || n.lv === S.fadeLv) && camera.position.distanceTo(n.pos) < near)).slice(0, 40).forEach((n) => {
       const s = toScreen(n.pos); if (!s) return;
       place(label('N:' + n.id, esc(n.n), `${n === S.sel ? 'sel' : ''} ${nodeMet(n) ? '' : 'ahead'}`), s, 26, 0);
     });

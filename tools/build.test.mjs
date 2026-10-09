@@ -40,3 +40,13 @@ test('--data with a bad node fails the build and names the node', () => {
   writeFileSync(join(dir, 'modern.json'), JSON.stringify(m));
   assert.throws(() => execFileSync(process.execPath, ['tools/build.mjs', '--data', dir], { cwd: root, stdio: 'pipe' }), (e) => /unknown level "nowhere"/.test(String(e.stderr)));
 });
+
+const buildFails = (args) => { try { execFileSync(process.execPath, ['tools/build.mjs', ...args], { cwd: root, stdio: 'pipe' }); return null; } catch (e) { return String(e.stderr); } };
+
+test('--data with a missing directory, no value, or no modern.json fails instead of building an empty edition', () => {
+  assert.match(buildFails(['--data', join(tmpdir(), 'no-such-modern-dir-xyz')]) || '', /--data: .* is not a directory/);
+  assert.match(buildFails(['--data']) || '', /--data needs a directory/);
+  assert.match(buildFails(['--data', '--site', 'https://example.test/']) || '', /--data needs a directory/);
+  const empty = mkdtempSync(join(tmpdir(), 'modern-empty-'));
+  assert.match(buildFails(['--data', empty]) || '', /modern\.json not found/);
+});

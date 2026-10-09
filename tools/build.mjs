@@ -1,7 +1,7 @@
 // Build: wraps src/index.html (artifact form, no <html>/<head>) into a standalone page in dist/.
 // Usage:  node tools/build.mjs            -> three.js from cdnjs (same as the artifact)
 //         node tools/build.mjs --vendor   -> three.js copied into dist/vendor (no third-party script host)
-import { readFile, writeFile, mkdir, copyFile, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, copyFile, rm, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,6 +11,13 @@ const arg = (name) => { const i = process.argv.indexOf(name); return i > -1 ? pr
 const dataDir = arg('--data'), siteArg = arg('--site'), titleArg = arg('--title'), descArg = arg('--desc');
 const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const CDN = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+
+if (process.argv.includes('--data')) {   // a mistyped or missing --data must fail, never build an empty "modern" edition
+  if (!dataDir || dataDir.startsWith('--')) throw new Error('--data needs a directory');
+  const st = await stat(resolve(dataDir)).catch(() => null);
+  if (!st || !st.isDirectory()) throw new Error(`--data: ${resolve(dataDir)} is not a directory`);
+  if (!(await stat(join(resolve(dataDir), 'modern.json')).catch(() => null))) throw new Error(`--data: modern.json not found in ${resolve(dataDir)}`);
+}
 
 await rm(join(root, 'dist'), { recursive: true, force: true });
 await mkdir(join(root, 'dist'), { recursive: true });
