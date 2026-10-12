@@ -8,7 +8,7 @@
 
 - **A cited dataset.** 130 points and 37 links, every one tied to a canto and line.
 - **A living model.** 33 animated scenes (a river of blood, a waterfall, crowds pushing weights, a storm of souls) play out where the poem puts them. Tap a figure to ask what it is.
-- **A guided descent.** Play the journey, or scrub it: the camera follows you down the funnel.
+- **A guided descent.** Play the journey, or scrub it: the camera follows you down the funnel. Dante and Virgil slow at each guardian, place and event, and a film-credit caption names it, says what it is and what the circle does to those in it (the Captions button turns this off).
 - **Built for phones too.** A full-screen menu, a bottom-sheet card, a depth gauge and touch-sized controls.
 
 ## The idea
