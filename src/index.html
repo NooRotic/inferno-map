@@ -1828,6 +1828,8 @@ function journeyStep(s, dt, canto, stops) {
   }
   return { rate, alpha, stop: s.stop };
 }
+/* the book edition stops at guardians, places and events; once the modern layer is merged, only the modern points stop the journey (keeps the run short) */
+function stopEligible(n, hasModern) { return n.modern ? n.k === 'mevent' || n.k === 'mpattern' : !hasModern && (n.k === 'guardian' || n.k === 'place' || n.k === 'event'); }
 function trimSub(text) {
   text = String(text || '').replace(/\s+/g, ' ').trim();
   if (text.length <= JOURNEY.SUB_MAX) return text;
@@ -1840,13 +1842,12 @@ function captionText(n, L) {
 }
 /* journey:end */
 const JRN = { cand: [], stops: [], st: null, on: true, shown: null };
-const JKINDS = { mevent: 1, mpattern: 1, guardian: 1, place: 1, event: 1 };
 /* for each eligible point: the canto at which the pilgrim passes closest to it (3D), never before the point unlocks */
 function buildStops() {
   const cs = [], ps = []; for (let c = 1; c <= 35.0001; c += 0.05) { cs.push(c); ps.push(pathCurve.getPointAt(Math.min(1, arcAtCanto(c)))); }
   JRN.cand = [];
   NODES.forEach((n) => {
-    if (!JKINDS[n.k] || !n.pos) return;
+    if (!stopEligible(n, HAS_MODERN) || !n.pos) return;
     let best = -1, bd = Infinity; for (let i = 0; i < cs.length; i++) { if (cs[i] < n.canto) continue; const d = ps[i].distanceToSquared(n.pos); if (d < bd) { bd = d; best = i; } }
     if (best >= 0) { const x = captionText(n, LV[n.lv]); JRN.cand.push({ id: n.id, c: Math.min(JOURNEY.LAST_CANTO, cs[best]), len: x.title.length + x.sub.length + x.pun.length }); }
   });

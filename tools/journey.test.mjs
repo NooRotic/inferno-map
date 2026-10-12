@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 // self-contained file. This test pulls the block out and runs it in isolation.
 const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'index.html'), 'utf8');
 const m = /\/\* journey:begin \*\/([\s\S]*?)\/\* journey:end \*\//.exec(html);
-const J = m ? new Function(`${m[1]}; return { JOURNEY, planStops, journeyReset, journeyStep, holdFor, captionText };`)() : null;
+const J = m ? new Function(`${m[1]}; return { JOURNEY, planStops, journeyReset, journeyStep, holdFor, captionText, stopEligible };`)() : null;
 
 test('the journey block exists in index.html', () => assert.ok(m, 'missing journey:begin / journey:end markers'));
 
@@ -92,4 +92,12 @@ test('captionText builds title, subtitle and punishment lines and trims long tex
   assert.ok(long.sub.length <= J.JOURNEY.SUB_MAX); assert.match(long.sub, /\.$/);
   const none = J.captionText({ n: 'Y' }, { name: 'Z', group: 'G' });
   assert.equal(none.sub, ''); assert.equal(none.pun, '');
+});
+
+test('with the modern layer merged, only modern points stop the journey; the book edition stops at guardians, places and events', () => {
+  const book = (k) => ({ k, modern: false }), mod = (k) => ({ k, modern: true });
+  ['guardian', 'place', 'event'].forEach((k) => { assert.equal(J.stopEligible(book(k), false), true, `book ${k}`); assert.equal(J.stopEligible(book(k), true), false, `book ${k} with modern`); });
+  ['mevent', 'mpattern'].forEach((k) => assert.equal(J.stopEligible(mod(k), true), true, k));
+  ['soul', 'absent'].forEach((k) => assert.equal(J.stopEligible(book(k), false), false, k));
+  assert.equal(J.stopEligible(mod('mevent'), false), true);
 });
