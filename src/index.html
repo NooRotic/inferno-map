@@ -125,6 +125,16 @@ button { font: inherit; color: inherit; }
 @media (max-width: 1459px) { .strip { left: 56px; top: auto; bottom: calc(var(--foot, 160px) + 10px); width: min(640px, calc(100% - 448px)); transform: translateY(8px); } .strip.on { transform: none; } }
 @media (max-width: 900px) { .strip { left: 16px; width: min(640px, calc(100% - 32px)); } }
 @media (max-width: 720px) { .strip { display: none; } }
+/* journey caption: a film-credit lower third that fades in while the pilgrim lingers at an icon */
+#jcap { position: absolute; left: clamp(16px, 4vw, 64px); bottom: calc(var(--foot, 160px) + 64px); width: min(560px, calc(100% - 448px)); z-index: 4; pointer-events: none; text-shadow: 0 2px 14px rgba(0,0,0,.85), 0 0 3px rgba(0,0,0,.9); opacity: 0; }
+#jcap[hidden] { display: none; }
+#jcap .jwhere { font-family: var(--font-display); font-size: 11px; letter-spacing: .26em; text-transform: uppercase; color: var(--gold-hi); }
+#jcap .jtitle { font-family: var(--font-display); font-weight: 600; font-size: clamp(22px, 3.2vw, 34px); line-height: 1.1; letter-spacing: .03em; color: var(--on-dark, #efe4cc); margin: 6px 0 8px; text-wrap: balance; }
+#jcap .jrule { height: 1px; width: 92px; background: linear-gradient(90deg, var(--gold-hi), rgba(224,187,100,0)); margin: 0 0 10px; transform-origin: left center; }
+#jcap .jsub { font-size: 16px; line-height: 1.35; color: #e6dcc6; max-width: 46ch; }
+#jcap .jpun { font-size: 13.5px; line-height: 1.3; color: #cdbf9f; margin-top: 8px; font-style: italic; max-width: 46ch; }
+@media (max-width: 1100px) { #jcap { width: calc(100% - 32px); } }
+@media (max-width: 720px) { #jcap { bottom: calc(var(--foot, 160px) + 18px); } #jcap .jsub { font-size: 14.5px; } #jcap .jpun { font-size: 12.5px; } }
 
 /* ---------- vellum leaves ---------- */
 .leaf { background: var(--vellum); color: var(--ink); background-image: radial-gradient(ellipse at 30% 0%, rgba(255,255,255,.35), transparent 60%), radial-gradient(ellipse at 100% 100%, rgba(150,110,60,.18), transparent 55%);
@@ -364,6 +374,7 @@ button { font: inherit; color: inherit; }
   </nav>
 
   <div id="strip" class="strip leaf" aria-hidden="true"></div>
+  <div id="jcap" hidden aria-live="polite"><div class="jwhere"></div><div class="jtitle"></div><div class="jrule"></div><div class="jsub"></div><div class="jpun"></div></div>
 
   <div id="gauge" class="gauge" role="group" aria-label="Camera depth">
     <div class="gauge-bands" id="gaugeBands"></div>
@@ -396,6 +407,7 @@ button { font: inherit; color: inherit; }
         <button class="btn" id="btnLinks" aria-pressed="true">Links</button>
         <button class="btn" id="btnLabels" aria-pressed="true">Labels</button>
         <button class="btn" id="btnMotion" aria-pressed="true" title="Animated scenes, moving crowds and flowing water">Motion</button>
+        <button class="btn" id="btnCaps" aria-pressed="true" title="While you play the journey, pause at each guardian, place, event and modern entry and show its caption">Captions</button>
         <button class="btn" id="btnNow" aria-pressed="true" hidden title="Show or hide the documented modern events and patterns">Now</button>
       </span>
       <span class="spacer"></span>
@@ -632,6 +644,7 @@ function init(data, spriteSpec) {
   buildLandmarks();
   buildPath();
   buildMarkers();
+  buildStops();
   buildEdges();
   buildParticles();
   buildTableaux(D.tableaux);
@@ -1485,6 +1498,12 @@ function buildUI() {
   $('#btnMotion').setAttribute('aria-pressed', S.motion);
   $('#btnMotion').addEventListener('click', (e) => { S.motion = !S.motion; e.currentTarget.setAttribute('aria-pressed', S.motion); try { localStorage.setItem('inferno-motion', S.motion ? '1' : '0'); } catch (err) {}
     toast(S.motion ? 'Motion on: crowds march, rivers flow, the falls pour. Tap a figure to see who they are and why' : 'Motion off: crowds, rivers and the falls hold still'); });
+  try { const v = localStorage.getItem('inferno-captions'); if (v === '0' || v === '1') JRN.on = v === '1'; } catch (e) {}
+  $('#btnCaps').setAttribute('aria-pressed', JRN.on);
+  $('#btnCaps').addEventListener('click', (e) => {
+    JRN.on = !JRN.on; e.currentTarget.setAttribute('aria-pressed', JRN.on); try { localStorage.setItem('inferno-captions', JRN.on ? '1' : '0'); } catch (err) {}
+    jShow(null); JRN.stops = JRN.on ? planStops(JRN.cand.filter((x) => live(NODE[x.id]))) : []; JRN.st = S.playing ? journeyReset(JRN.stops, S.canto) : null;
+  });
   const btnNow = $('#btnNow');
   if (HAS_MODERN) {
     btnNow.hidden = false; btnNow.setAttribute('aria-pressed', S.now);
@@ -1631,7 +1650,7 @@ function updateCamera(dt) {
   if (S.follow) {
     const L = S.curLevel, p = pilgrim.position; cam.g.target.copy(p);
     if (L.kind === 'tunnel' || p.y < CY - 1) { setAz(((W0 + W1) / 2) * DEG); cam.g.el = 6 * DEG; cam.g.dist = 90; }
-    else { if (Math.hypot(p.x, p.z) > 3) setAz(Math.atan2(p.z, p.x) + Math.PI); cam.g.el = 46 * DEG; cam.g.dist = Math.max(18, Math.min(80, (L.ro - L.ri) * 3 + 16)); }
+    else { if (Math.hypot(p.x, p.z) > 3) setAz(Math.atan2(p.z, p.x) + Math.PI); cam.g.el = 46 * DEG; cam.g.dist = Math.max(18, Math.min(80, (L.ro - L.ri) * 3 + 16)) * (1 - 0.2 * (JRN.pull || 0)); }   // a gentle push-in while a journey caption holds
   }
   // keep the camera's focus inside the model
   cam.g.target.y = Math.max(CY - RS - 60, Math.min(60, cam.g.target.y));
@@ -1774,18 +1793,94 @@ function updateLabels() {
   labelPool.forEach((el) => { if (!el._used) el.style.display = 'none'; });
 }
 
+/* ======================= journey captions ======================= */
+/* journey:begin */
+/* While the journey plays, the pilgrim slows into each stop, holds while a credit-style caption fades in, then eases away.
+   Pure logic (no DOM, no Three.js) so tools/journey.test.mjs can run it. `canto` is the journey position; a stop is { id, c, hold }. */
+const JOURNEY = { APPROACH: 0.14, MIN_RATE: 0.15, MIN_GAP: 0.1, LAST_CANTO: 34.9, ENTER: 0.01, FADE: 1.0, RESUME: 1.5, HOLD_MIN: 5.5, HOLD_MAX: 9, SUB_MAX: 150 };
+const jSmooth = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+function holdFor(len) { return Math.min(JOURNEY.HOLD_MAX, Math.max(JOURNEY.HOLD_MIN, 5 + len / 28)); }
+function planStops(items) {
+  const s = items.map((x) => ({ id: x.id, c: x.c, hold: holdFor(x.len || 0) })).sort((a, b) => a.c - b.c);
+  for (let i = 1; i < s.length; i++) s[i].c = Math.max(s[i].c, s[i - 1].c + JOURNEY.MIN_GAP);       // nudge, never drop
+  for (let i = s.length - 1; i >= 0; i--) s[i].c = Math.min(s[i].c, i === s.length - 1 ? JOURNEY.LAST_CANTO : s[i + 1].c - JOURNEY.MIN_GAP);
+  return s;
+}
+function journeyReset(stops, canto) { let i = 0; while (i < stops.length && stops[i].c <= canto + JOURNEY.ENTER) i++; return { i, phase: 'travel', t: 0, stop: null }; }
+function approachRate(d) { return d >= JOURNEY.APPROACH ? 1 : d <= 0 ? JOURNEY.MIN_RATE : JOURNEY.MIN_RATE + (1 - JOURNEY.MIN_RATE) * jSmooth(d / JOURNEY.APPROACH); }
+function journeyStep(s, dt, canto, stops) {
+  let rate = 1, alpha = 0, justResumed = false;
+  if (s.phase === 'hold') {
+    s.t += dt;
+    if (s.t >= s.stop.hold) { s.phase = 'resume'; s.t = 0; s.i++; justResumed = true; } else return { rate: 0, alpha: jSmooth(s.t / JOURNEY.FADE), stop: s.stop };
+  }
+  if (s.phase === 'resume') {
+    if (!justResumed) s.t += dt;
+    rate = JOURNEY.MIN_RATE + (1 - JOURNEY.MIN_RATE) * jSmooth(s.t / JOURNEY.RESUME);
+    alpha = 1 - jSmooth(s.t / JOURNEY.FADE);
+    if (s.t >= JOURNEY.RESUME) { s.phase = 'travel'; s.t = 0; s.stop = null; rate = 1; alpha = 0; }
+  }
+  const nxt = stops[s.i];
+  if (nxt) {
+    const d = nxt.c - canto;
+    if (d <= JOURNEY.ENTER && (s.phase === 'travel' || s.t >= JOURNEY.FADE)) { s.phase = 'hold'; s.t = 0; s.stop = nxt; return { rate: 0, alpha: 0, stop: nxt }; }
+    rate = Math.min(rate, approachRate(d));
+  }
+  return { rate, alpha, stop: s.stop };
+}
+function trimSub(text) {
+  text = String(text || '').replace(/\s+/g, ' ').trim();
+  if (text.length <= JOURNEY.SUB_MAX) return text;
+  const sentences = text.match(/[^.!?]+[.!?]+(?=\s|$)/g) || []; let out = '';
+  for (const x of sentences) { const next = (out ? out + ' ' : '') + x.trim(); if (next.length > JOURNEY.SUB_MAX) break; out = next; }
+  return out || text.slice(0, JOURNEY.SUB_MAX - 1).replace(/\s+\S*$/, '') + '…';
+}
+function captionText(n, L) {
+  return { title: n.n || '', sub: trimSub(n.cap || n.note || ''), where: [L.group, L.name].filter(Boolean).join(' · '), pun: L.pun || '' };
+}
+/* journey:end */
+const JRN = { cand: [], stops: [], st: null, on: true, shown: null };
+const JKINDS = { mevent: 1, mpattern: 1, guardian: 1, place: 1, event: 1 };
+/* for each eligible point: the canto at which the pilgrim passes closest to it (3D), never before the point unlocks */
+function buildStops() {
+  const cs = [], ps = []; for (let c = 1; c <= 35.0001; c += 0.05) { cs.push(c); ps.push(pathCurve.getPointAt(Math.min(1, arcAtCanto(c)))); }
+  JRN.cand = [];
+  NODES.forEach((n) => {
+    if (!JKINDS[n.k] || !n.pos) return;
+    let best = -1, bd = Infinity; for (let i = 0; i < cs.length; i++) { if (cs[i] < n.canto) continue; const d = ps[i].distanceToSquared(n.pos); if (d < bd) { bd = d; best = i; } }
+    if (best >= 0) { const x = captionText(n, LV[n.lv]); JRN.cand.push({ id: n.id, c: Math.min(JOURNEY.LAST_CANTO, cs[best]), len: x.title.length + x.sub.length + x.pun.length }); }
+  });
+}
+function jShow(x) {
+  const el = $('#jcap'); if (!el) return;
+  if (!x || x.alpha <= 0.001) { if (!el.hidden) { el.hidden = true; el.style.opacity = 0; } if (JRN.shown) { JRN.shown = null; S.hover = null; refreshMarkers(); } return; }
+  const n = NODE[x.stop.id];
+  if (JRN.shown !== n) {
+    JRN.shown = n; const c = captionText(n, LV[n.lv]);
+    el.querySelector('.jwhere').textContent = c.where; el.querySelector('.jtitle').textContent = c.title;
+    el.querySelector('.jsub').textContent = c.sub; el.querySelector('.jpun').textContent = c.pun ? (n.modern ? 'In Dante, this circle: ' : 'Punishment: ') + c.pun : '';
+    el.querySelector('.jsub').hidden = !c.sub; el.querySelector('.jpun').hidden = !c.pun;
+    S.hover = n; refreshMarkers();
+  }
+  el.hidden = false; const a = x.alpha, lift = S.motion ? 14 : 0, part = (lo, hi) => jSmooth((a - lo) / (hi - lo));
+  el.style.opacity = part(0, 0.5);
+  [['.jwhere', 0, 0.45], ['.jtitle', 0.1, 0.6], ['.jrule', 0.3, 0.8], ['.jsub', 0.45, 0.9], ['.jpun', 0.6, 1]].forEach(([q, lo, hi]) => { const e = el.querySelector(q), v = part(lo, hi); e.style.opacity = v; e.style.transform = q === '.jrule' ? `scaleX(${v})` : `translateY(${(1 - v) * lift}px)`; });
+}
+
 /* ======================= playback ======================= */
 function toggleIcons() { S.icons = !S.icons; markerMat.uniforms.uIcons.value = S.icons ? 1 : 0; $('#btnIcons').setAttribute('aria-pressed', S.icons); }
 function togglePlay() { S.playing ? stopPlay() : startPlay(); }
 /* cantos per second while playing the journey: about 6 minutes end to end, slow enough to watch each circle's scenes */
 const PLAY_RATE = 0.1;
-function startPlay() { if (S.canto >= 34.99) setCanto(1); S.playing = true; S.follow = true; if (S.fly) toggleFly(); $('#btnPlay').setAttribute('aria-pressed', 'true'); $('#playLbl').textContent = '❚❚ Pause'; }
-function stopPlay() { S.playing = false; S.follow = false; $('#btnPlay').setAttribute('aria-pressed', 'false'); $('#playLbl').textContent = '▶ Play the journey'; }
+function startPlay() { if (S.canto >= 34.99) setCanto(1); JRN.stops = JRN.on ? planStops(JRN.cand.filter((x) => live(NODE[x.id]))) : []; JRN.st = journeyReset(JRN.stops, S.canto); S.playing = true; S.follow = true; if (S.fly) toggleFly(); $('#btnPlay').setAttribute('aria-pressed', 'true'); $('#playLbl').textContent = '❚❚ Pause'; }
+function stopPlay() { S.playing = false; S.follow = false; JRN.st = null; jShow(null); $('#btnPlay').setAttribute('aria-pressed', 'false'); $('#playLbl').textContent = '▶ Play the journey'; }
 
 /* ======================= loop ======================= */
 function loop() {
   const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
-  if (S.playing) { setCanto(S.canto + dt * PLAY_RATE); if (S.canto >= 35) stopPlay(); }
+  let jr = null;
+  if (S.playing) { jr = JRN.st ? journeyStep(JRN.st, dt, S.canto, JRN.stops) : { rate: 1, alpha: 0, stop: null }; setCanto(S.canto + dt * PLAY_RATE * jr.rate); if (S.canto >= 35) stopPlay(); else jShow(jr); }
+  JRN.pull = jr ? jr.alpha : 0;
   updateCamera(dt); syncGauge(); updateFade(dt);
   if (S.motion) { tickParticles(dt); tickTableaux(t); updateLucifer(dt); wings.forEach((w, i) => (w.rotation.z = Math.sin(t * 0.9 + i * 1.3) * 0.12)); pilgrim.rotation.y = t * 1.2; }
   markerMat.uniforms.uTime.value = t;
