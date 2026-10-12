@@ -126,14 +126,14 @@ button { font: inherit; color: inherit; }
 @media (max-width: 900px) { .strip { left: 16px; width: min(640px, calc(100% - 32px)); } }
 @media (max-width: 720px) { .strip { display: none; } }
 /* journey caption: a film-credit lower third that fades in while the pilgrim lingers at an icon */
-#jcap { position: absolute; left: clamp(16px, 4vw, 64px); bottom: calc(var(--foot, 160px) + 64px); width: min(560px, calc(100% - 448px)); z-index: 4; pointer-events: none; padding: 16px 40px 16px 20px; border-radius: 4px; background: linear-gradient(90deg, rgba(8,6,4,.82) 0%, rgba(8,6,4,.62) 72%, rgba(8,6,4,0) 100%); text-shadow: 0 1px 8px rgba(0,0,0,.9); opacity: 0; }
+#jcap { box-sizing: border-box; position: absolute; left: clamp(16px, 4vw, 64px); bottom: calc(var(--foot, 160px) + 64px); width: min(560px, calc(100% - 448px)); z-index: 4; pointer-events: none; padding: 16px 40px 16px 20px; border-radius: 4px; background: linear-gradient(90deg, rgba(8,6,4,.82) 0%, rgba(8,6,4,.62) 72%, rgba(8,6,4,0) 100%); text-shadow: 0 1px 8px rgba(0,0,0,.9); opacity: 0; }
 #jcap[hidden] { display: none; }
 #jcap .jwhere { font-family: var(--font-display); font-size: 11px; letter-spacing: .26em; text-transform: uppercase; color: var(--gold-hi); }
 #jcap .jtitle { font-family: var(--font-display); font-weight: 600; font-size: clamp(22px, 3.2vw, 34px); line-height: 1.1; letter-spacing: .03em; color: var(--on-dark, #efe4cc); margin: 6px 0 8px; text-wrap: balance; }
 #jcap .jrule { height: 1px; width: 92px; background: linear-gradient(90deg, var(--gold-hi), rgba(224,187,100,0)); margin: 0 0 10px; transform-origin: left center; }
 #jcap .jsub { font-size: 16px; line-height: 1.35; color: #e6dcc6; max-width: 46ch; }
 #jcap .jpun { font-size: 13.5px; line-height: 1.3; color: #cdbf9f; margin-top: 8px; font-style: italic; max-width: 46ch; }
-@media (max-width: 1100px) { #jcap { width: calc(100% - 32px); } }
+@media (max-width: 1100px) { #jcap { width: min(640px, calc(100% - 32px)); } }
 @media (max-width: 720px) { #jcap { bottom: calc(var(--foot, 160px) + 18px); } #jcap .jsub { font-size: 14.5px; } #jcap .jpun { font-size: 12.5px; } }
 
 /* ---------- vellum leaves ---------- */
