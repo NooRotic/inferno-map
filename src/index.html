@@ -142,6 +142,10 @@ button { font: inherit; color: inherit; }
 /* modern entries read differently from the poem: a narrow grotesque title and a typewriter tag, in the entry's own colour */
 #jcap .jtag { display: inline-block; font-family: 'Special Elite', 'Courier New', monospace; font-size: 12px; letter-spacing: .16em; color: #7fe3ea; border: 1px solid currentColor; border-radius: 2px; padding: 1px 7px 0; margin-top: 8px; }
 #jcap.modern .jtag { color: #7fe3ea; }
+/* modern cards and the hover strip share the caption's look: narrow grotesque title, typewriter NOW tag */
+#detail h2.mod, .strip.modern .nm { font-family: 'Archivo Narrow', 'Arial Narrow', sans-serif; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+.nowtag { display: inline-block; font-family: 'Special Elite', 'Courier New', monospace; font-size: 11px; font-weight: 400; letter-spacing: .16em; color: #1d7f87; border: 1px solid currentColor; border-radius: 2px; padding: 1px 6px 0; margin: 2px 0 4px; }
+.strip .cat .nowtag { margin: 0 4px 0 0; padding: 0 4px; font-size: 10px; }
 .flagchip { display: inline-block; width: 24px; height: 16px; vertical-align: -3px; margin-right: 8px; border: 1px solid rgba(0,0,0,.55); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
 #jcap .jtag .flagchip { vertical-align: -4px; }
 #jcap.modern .jtitle { font-family: 'Archivo Narrow', 'Arial Narrow', sans-serif; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
@@ -1304,7 +1308,7 @@ function renderModernCard(n) {
   const echoes = n.links.filter(({ e }) => e.t === 'modern' && e.a === n.id).map(({ to, e }) => ({ to, note: e.note })).concat(n.links.length ? [] : (n.echoes && (NODE[n.echoes] || LV[n.echoes]) ? [{ to: n.echoes, note: 'Echoes' }] : []));   // every book point or circle this entry echoes, the first with 'Echoes', the rest with their own note
   return `<button class="x" aria-label="Close">×</button>
     <div class="dhead"><div class="roundel" style="--ring:${K.css}">${icon(n.sprite, 64)}</div>
-      <div><div class="eyebrow">${K.la} · ${K.en}</div><h2${n.n.length > 60 ? ' class="long2"' : n.n.length > 36 ? ' class="long"' : ''}>${esc(n.n)}</h2>
+      <div><div class="eyebrow">${K.la} · ${K.en}</div><div class="nowtag">${pattern ? 'NOW · PATTERN' : 'NOW · DOCUMENTED'}</div><h2 class="mod${n.n.length > 60 ? ' long2' : n.n.length > 36 ? ' long' : ''}">${esc(n.n)}</h2>
       <div class="where">${esc(L.la || L.name)} · <span class="cite">${esc(n.cite)}</span></div></div></div>
     <div class="badges"><span class="badge conf-${esc(n.conf)}">${esc(CONF_LABEL[n.conf] || n.conf || '')}</span>${n.asOf ? `<span class="badge">as of ${esc(n.asOf)}</span>` : ''}${pattern && n.termStatus ? `<span class="badge">${n.termStatus === 'popular' ? 'popular usage' : 'scholarly term'}</span>` : ''}${bandBadge(L)}</div>
     <div class="sect">What the record shows</div>
@@ -1791,8 +1795,10 @@ function renderStrip() {
   if ((!n && !L) || !$('#detail').hidden) { el.classList.remove('on'); return; }   // the hover strip would sit on top of an open card
   el.style.setProperty('--band', bandCss(n ? LV[n.lv] : L));
   if (n) {
-    el.innerHTML = `${icon(n.sprite, 30)}<span class="nm">${esc(n.n)}</span><span class="cat">${esc(KIND[n.k].en)} · ${esc(n.sin || LV[n.lv].sin)}</span><span class="desc">${esc(n.note)}</span><span class="cite">${esc(n.cite)}</span>`;
+    el.classList.toggle('modern', !!n.modern);
+    el.innerHTML = `${icon(n.sprite, 30)}<span class="nm">${esc(n.n)}</span><span class="cat">${n.modern ? '<b class="nowtag">NOW</b> ' : ''}${esc(KIND[n.k].en)} · ${esc(n.sin || LV[n.lv].sin)}</span><span class="desc">${esc(n.note)}</span><span class="cite">${esc(n.cite)}</span>`;
   } else {
+    el.classList.remove('modern');
     const k = NODES.filter((m) => m.lv === L.id && live(m)).length;
     el.innerHTML = `<span class="nm">${esc(L.la || L.name)}</span><span class="cat">${esc(L.sin)}</span><span class="desc">${esc(L.name)} · ${k} ${k === 1 ? 'point' : 'points'} of interest</span><span class="cite">${esc(L.cite)}</span>`;
   }
