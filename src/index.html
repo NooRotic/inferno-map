@@ -119,6 +119,7 @@ button { font: inherit; color: inherit; }
   padding: 8px 16px; pointer-events: none; opacity: 0; transform: translate(-50%, -8px); transition: opacity .12s, transform .12s; }
 .strip.on { opacity: 1; transform: translate(-50%, 0); }
 .strip .nm { font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: .04em; flex: none; max-width: 40%; }
+.strip .cite { flex: 0 1 30%; min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: right; font-size: 13px; }
 .strip .cat { font-family: var(--font-display); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--rubric); flex: none; max-width: 32%; }
 .strip .desc { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.25; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 /* below ~1460px the top-centre slot collides with the itinerary and detail panels (376px + 640px strip + 406px), so the strip sits just above the controls, left of the medallions */
@@ -1262,7 +1263,7 @@ function renderMedallions() {
 
 /* ---------- selection, fading, camera framing ---------- */
 function clearSel() { S.sel = null; S.selLevel = null; S.focusLevel = null; S.fadeLv = null; refreshAll(); }
-function refreshAll() { refreshMarkers(); refreshEdges(); refreshFloors(); renderDetail(); renderMedallions(); }
+function refreshAll() { refreshMarkers(); refreshEdges(); refreshFloors(); renderDetail(); renderMedallions(); renderStrip(); }   // renderStrip last: the hover strip steps aside when a card opens
 function selectNode(n, fly = true) {
   S.sel = n; S.selLevel = null; S.focusLevel = null; S.fadeLv = n.lv; refreshAll();
   if (n && fly) frameNode(n);
