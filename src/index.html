@@ -184,7 +184,9 @@ button { font: inherit; color: inherit; }
 #detail::-webkit-scrollbar, #drawer::-webkit-scrollbar { width: 11px; }
 #detail::-webkit-scrollbar-track, #drawer::-webkit-scrollbar-track { background: rgba(110,80,30,.12); border-radius: 6px; }
 #detail::-webkit-scrollbar-thumb, #drawer::-webkit-scrollbar-thumb { background: #a8803a; border-radius: 6px; border: 2px solid #efe4cc; }
-#detail h2 { overflow-wrap: anywhere; padding-right: 48px; }
+#detail h2 { overflow-wrap: break-word; }
+#detail h2.long { font-size: 18px; letter-spacing: .01em; }
+#detail h2.long2 { font-size: 15px; letter-spacing: 0; line-height: 1.2; }
 #detail h2 { font-family: var(--font-display); font-weight: 600; font-size: 23px; line-height: 1.12; margin: 2px 0 4px; text-wrap: balance; }
 .where { color: var(--ink-soft); font-size: 15px; line-height: 1.3; }
 .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 2px; font-size: 13px; }
@@ -1277,7 +1279,7 @@ function renderModernCard(n) {
   const E = n.echoes && (NODE[n.echoes] || LV[n.echoes]) ? n.echoes : null;
   return `<button class="x" aria-label="Close">×</button>
     <div class="dhead"><div class="roundel" style="--ring:${K.css}">${icon(n.sprite, 64)}</div>
-      <div><div class="eyebrow">${K.la} · ${K.en}</div><h2>${esc(n.n)}</h2>
+      <div><div class="eyebrow">${K.la} · ${K.en}</div><h2${n.n.length > 60 ? ' class="long2"' : n.n.length > 36 ? ' class="long"' : ''}>${esc(n.n)}</h2>
       <div class="where">${esc(L.la || L.name)} · <span class="cite">${esc(n.cite)}</span></div></div></div>
     <div class="badges"><span class="badge conf-${esc(n.conf)}">${esc(CONF_LABEL[n.conf] || n.conf || '')}</span>${n.asOf ? `<span class="badge">as of ${esc(n.asOf)}</span>` : ''}${pattern && n.termStatus ? `<span class="badge">${n.termStatus === 'popular' ? 'popular usage' : 'scholarly term'}</span>` : ''}${bandBadge(L)}</div>
     <div class="sect">What the record shows</div>
@@ -1300,7 +1302,7 @@ function renderDetail() {
     const n = S.sel, L = LV[n.lv], met = nodeMet(n), K = KIND[n.k];
     el.innerHTML = `<button class="x" aria-label="Close">×</button>
       <div class="dhead"><div class="roundel" style="--ring:${K.css}">${icon(n.sprite, 64)}</div>
-        <div><div class="eyebrow">${K.la} · ${K.en}</div><h2>${esc(n.n)}</h2>
+        <div><div class="eyebrow">${K.la} · ${K.en}</div><h2${n.n.length > 60 ? ' class="long2"' : n.n.length > 36 ? ' class="long"' : ''}>${esc(n.n)}</h2>
         <div class="where">${esc(L.la || L.name)} · <span class="cite">${esc(n.cite)}</span></div></div></div>
       <div class="badges"><span class="badge ${n.conf}">${n.conf === 'text' ? 'stated in the text' : 'interpretive'}</span><span class="badge">${met ? 'encountered' : 'not yet reached'}</span>${bandBadge(L)}${n.sin ? `<span class="badge">${esc(n.sin)}</span>` : ''}</div>
       <p class="note">${esc(n.note)}</p>
