@@ -142,12 +142,12 @@ button { font: inherit; color: inherit; }
 #app.capshow .itin { opacity: .25; }
 .itin { transition: opacity .45s ease; }
 /* modern entries read differently from the poem: a narrow grotesque title and a typewriter tag, in the entry's own colour */
-#jcap .jtag { display: inline-block; font-family: 'Special Elite', 'Courier New', monospace; font-size: 12px; letter-spacing: .16em; color: #7fe3ea; border: 1px solid currentColor; border-radius: 2px; padding: 1px 7px 0; margin-top: 8px; }
+#jcap .jtag { display: inline-block; font-family: 'Special Elite', 'Courier New', monospace; font-size: 12px; letter-spacing: .16em; color: #7fe3ea; border: 1px solid currentColor; border-radius: 2px; line-height: 1; padding: .36em 7px .09em; margin-top: 8px; }
 #jcap.modern .jtag { color: #7fe3ea; }
 /* modern cards and the hover strip share the caption's look: narrow grotesque title, typewriter NOW tag */
 #detail h2.mod, .strip.modern .nm { font-family: 'Archivo Narrow', 'Arial Narrow', sans-serif; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
-.nowtag { display: inline-block; font-family: 'Special Elite', 'Courier New', monospace; font-size: 11px; font-weight: 400; letter-spacing: .16em; color: #1d7f87; border: 1px solid currentColor; border-radius: 2px; padding: 1px 6px 0; margin: 2px 0 4px; }
-.strip .cat .nowtag { margin: 0 4px 0 0; padding: 0 4px; font-size: 10px; }
+.nowtag { display: inline-block; font-family: 'Special Elite', 'Courier New', monospace; font-size: 11px; font-weight: 400; letter-spacing: .16em; color: #1d7f87; border: 1px solid currentColor; border-radius: 2px; line-height: 1; padding: .36em 6px .09em; margin: 2px 0 4px; }   /* Special Elite's capitals sit high in the line box, so the padding is lopsided to centre the ink */
+.strip .cat .nowtag { margin: 0 4px 0 0; padding: .36em 4px .09em; font-size: 10px; vertical-align: 1px; }
 .flagchip { display: inline-block; width: 24px; height: 16px; vertical-align: -3px; margin-right: 8px; border: 1px solid rgba(0,0,0,.55); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
 #jcap .jtag .flagchip { vertical-align: -4px; }
 #jcap.modern .jtitle { font-family: 'Archivo Narrow', 'Arial Narrow', sans-serif; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
@@ -194,7 +194,7 @@ button { font: inherit; color: inherit; }
 #detail::-webkit-scrollbar-track, #drawer::-webkit-scrollbar-track { background: rgba(110,80,30,.12); border-radius: 6px; }
 #detail::-webkit-scrollbar-thumb, #drawer::-webkit-scrollbar-thumb { background: #a8803a; border-radius: 6px; border: 2px solid #efe4cc; }
 /* the close button lives in a gutter on the right so scrolled text never slides under it (phones keep their own layout) */
-@media (min-width: 721px) { #app #detail { padding-right: 62px; } #detail .x { margin-right: -50px; } }
+@media (min-width: 721px) { #detail .dhead { padding-right: 40px; } }   /* only the header makes room for the close button; the body keeps the full width */
 #detail h2 { overflow-wrap: break-word; }
 #detail h2.long { font-size: 18px; letter-spacing: .01em; }
 #detail h2.long2 { font-size: 15px; letter-spacing: 0; line-height: 1.2; }
