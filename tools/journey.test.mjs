@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 // self-contained file. This test pulls the block out and runs it in isolation.
 const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'index.html'), 'utf8');
 const m = /\/\* journey:begin \*\/([\s\S]*?)\/\* journey:end \*\//.exec(html);
-const J = m ? new Function(`${m[1]}; return { JOURNEY, planStops, journeyReset, journeyStep, holdFor, captionText, stopEligible };`)() : null;
+const J = m ? new Function(`${m[1]}; return { JOURNEY, planStops, journeyReset, journeyStep, holdFor, captionText, stopEligible, journeyOnPause, journeyOnPlay };`)() : null;
 
 test('the journey block exists in index.html', () => assert.ok(m, 'missing journey:begin / journey:end markers'));
 
@@ -100,4 +100,25 @@ test('with the modern layer merged, only modern points stop the journey; the boo
   ['mevent', 'mpattern'].forEach((k) => assert.equal(J.stopEligible(mod(k), true), true, k));
   ['soul', 'absent'].forEach((k) => assert.equal(J.stopEligible(book(k), false), false, k));
   assert.equal(J.stopEligible(mod('mevent'), false), true);
+});
+
+test('pausing during a hold keeps the caption state; pausing anywhere else drops it', () => {
+  const st = stops(), s = J.journeyReset(st, 1);
+  assert.equal(J.journeyOnPause(s), null);                                // travelling: no caption to keep
+  J.journeyStep(s, 0.016, 2, st);                                         // enters the hold
+  assert.equal(s.phase, 'hold'); assert.equal(J.journeyOnPause(s), s);
+  J.journeyStep(s, st[0].hold, 2, st);                                    // now fading out
+  assert.equal(s.phase, 'resume'); assert.equal(J.journeyOnPause(s), null);
+  assert.equal(J.journeyOnPause(null), null);
+});
+
+test('pressing play after a paused hold resumes the same hold; otherwise it starts fresh after the current canto', () => {
+  const st = stops(), s = J.journeyReset(st, 1);
+  J.journeyStep(s, 0.016, 2, st); J.journeyStep(s, 1, 2, st);
+  const same = J.journeyOnPlay(s, st, 2);
+  assert.equal(same, s); assert.equal(same.phase, 'hold');
+  const fresh = J.journeyOnPlay(null, st, 5.2);
+  assert.equal(fresh.phase, 'travel'); assert.equal(fresh.i, 2);
+  const stale = J.journeyReset(st, 1); stale.phase = 'resume';
+  assert.equal(J.journeyOnPlay(stale, st, 5.2).phase, 'travel');
 });

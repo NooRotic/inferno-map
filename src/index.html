@@ -1,7 +1,7 @@
 <title>INFERNVS: Dante's Hell, placed from the poem</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Archivo+Narrow:wght@500;700&family=Special+Elite&display=swap">
 <style>
 /* Layout: a museum cutaway of the Earth fills the screen; manuscript leaves (vellum panels) sit at the edges:
    itinerary top-left, folio (detail) right, journey rule along the bottom. Deliberately one dark, lamplit look. */
@@ -133,6 +133,16 @@ button { font: inherit; color: inherit; }
 #jcap .jrule { height: 1px; width: 92px; background: linear-gradient(90deg, var(--gold-hi), rgba(224,187,100,0)); margin: 0 0 10px; transform-origin: left center; }
 #jcap .jsub { font-size: 16px; line-height: 1.35; color: #e6dcc6; max-width: 46ch; }
 #jcap .jpun { font-size: 13.5px; line-height: 1.3; color: #cdbf9f; margin-top: 8px; font-style: italic; max-width: 46ch; }
+#jcap { max-height: calc(100% - var(--foot, 160px) - 64px - 210px); overflow: hidden; }
+#jcap.held { pointer-events: auto; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #b8892a rgba(8,6,4,.4); }
+#jcap { cursor: pointer; pointer-events: auto; }
+#app.capshow .itin { opacity: .25; }
+.itin { transition: opacity .45s ease; }
+/* modern entries read differently from the poem: a narrow grotesque title and a typewriter tag, in the entry's own colour */
+#jcap .jtag { display: inline-block; font-family: 'Special Elite', 'Courier New', monospace; font-size: 12px; letter-spacing: .16em; color: #7fe3ea; border: 1px solid currentColor; border-radius: 2px; padding: 1px 7px 0; margin-top: 8px; }
+#jcap.modern .jtag { color: #7fe3ea; }
+#jcap.modern .jtitle { font-family: 'Archivo Narrow', 'Arial Narrow', sans-serif; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+#jcap.modern .jrule { background: linear-gradient(90deg, #7fe3ea, rgba(127,227,234,0)); }
 @media (max-width: 1100px) { #jcap { width: min(640px, calc(100% - 32px)); } }
 @media (max-width: 720px) { #jcap { bottom: calc(var(--foot, 160px) + 18px); } #jcap .jsub { font-size: 14.5px; } #jcap .jpun { font-size: 12.5px; } }
 
@@ -169,6 +179,11 @@ button { font: inherit; color: inherit; }
 .roundel { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; background: var(--vellum-2);
   box-shadow: 0 0 0 3px var(--ring, var(--ink)), 0 0 0 5px var(--vellum), 0 0 0 6px var(--gold); }
 .roundel .pix { width: 64px; height: 64px; }
+#app #detail, #app #drawer { overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #a8803a rgba(110,80,30,.14); }
+#detail::-webkit-scrollbar, #drawer::-webkit-scrollbar { width: 11px; }
+#detail::-webkit-scrollbar-track, #drawer::-webkit-scrollbar-track { background: rgba(110,80,30,.12); border-radius: 6px; }
+#detail::-webkit-scrollbar-thumb, #drawer::-webkit-scrollbar-thumb { background: #a8803a; border-radius: 6px; border: 2px solid #efe4cc; }
+#detail h2 { overflow-wrap: anywhere; padding-right: 48px; }
 #detail h2 { font-family: var(--font-display); font-weight: 600; font-size: 23px; line-height: 1.12; margin: 2px 0 4px; text-wrap: balance; }
 .where { color: var(--ink-soft); font-size: 15px; line-height: 1.3; }
 .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 2px; font-size: 13px; }
@@ -374,7 +389,7 @@ button { font: inherit; color: inherit; }
   </nav>
 
   <div id="strip" class="strip leaf" aria-hidden="true"></div>
-  <div id="jcap" hidden aria-live="polite"><div class="jwhere"></div><div class="jtitle"></div><div class="jrule"></div><div class="jsub"></div><div class="jpun"></div></div>
+  <div id="jcap" hidden aria-live="polite"><div class="jwhere"></div><div class="jtag" hidden></div><div class="jtitle"></div><div class="jrule"></div><div class="jsub"></div><div class="jpun"></div></div>
 
   <div id="gauge" class="gauge" role="group" aria-label="Camera depth">
     <div class="gauge-bands" id="gaugeBands"></div>
@@ -935,8 +950,8 @@ function waypointIndexAt(c) { let k = 0; D.path.forEach((w, i) => { if (w.c <= c
 /* ======================= markers (pixel icons on vellum roundels) ======================= */
 let markerMat, markerGeo, stems;
 function buildMarkers() {
-  const n = NODES.length, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), shape = new Float32Array(n), state = new Float32Array(n), size = new Float32Array(n), spr = new Float32Array(n), conf = new Float32Array(n);
-  NODES.forEach((nd, i) => { pos.set([nd.pos.x, nd.pos.y, nd.pos.z], i * 3); const k = KIND[nd.k]; col.set(k.ring, i * 3); shape[i] = k.shape; size[i] = nd.k === 'guardian' ? 1.1 : 1; spr[i] = PIX.index[nd.sprite]; conf[i] = nd.conf === 'reported' ? 1 : nd.conf === 'concept' ? 2 : 0; });
+  const n = NODES.length, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), shape = new Float32Array(n), state = new Float32Array(n), size = new Float32Array(n), spr = new Float32Array(n), conf = new Float32Array(n), modf = new Float32Array(n);
+  NODES.forEach((nd, i) => { modf[i] = nd.modern ? 1 : 0; pos.set([nd.pos.x, nd.pos.y, nd.pos.z], i * 3); const k = KIND[nd.k]; col.set(k.ring, i * 3); shape[i] = k.shape; size[i] = nd.k === 'guardian' ? 1.1 : 1; spr[i] = PIX.index[nd.sprite]; conf[i] = nd.conf === 'reported' ? 1 : nd.conf === 'concept' ? 2 : 0; });
   markerGeo = new THREE.BufferGeometry();
   markerGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   markerGeo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
@@ -945,29 +960,41 @@ function buildMarkers() {
   markerGeo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
   markerGeo.setAttribute('aSprite', new THREE.BufferAttribute(spr, 1));
   markerGeo.setAttribute('aConf', new THREE.BufferAttribute(conf, 1));
+  markerGeo.setAttribute('aMod', new THREE.BufferAttribute(modf, 1));
   const atlas = new THREE.CanvasTexture(PIX.canvas); atlas.magFilter = atlas.minFilter = THREE.NearestFilter; atlas.generateMipmaps = false;
   markerMat = new THREE.ShaderMaterial({
-    uniforms: { uScale: { value: innerHeight * renderer.getPixelRatio() }, uDpr: { value: renderer.getPixelRatio() }, uTime: { value: 0 },
+    uniforms: { uScale: { value: innerHeight * renderer.getPixelRatio() }, uDpr: { value: renderer.getPixelRatio() }, uTime: { value: 0 }, uMotion: { value: S.motion ? 1 : 0 },
       uIcons: { value: 1 }, uAtlas: { value: atlas }, uGrid: { value: new THREE.Vector2(PIX.COLS, PIX.ROWS) } },
-    vertexShader: `attribute vec3 aColor; attribute float aShape; attribute float aState; attribute float aSize; attribute float aSprite; attribute float aConf;
-      uniform float uScale; uniform float uDpr; uniform float uIcons; varying vec3 vColor; varying float vShape; varying float vState; varying float vSprite; varying float vConf;
+    vertexShader: `attribute vec3 aColor; attribute float aShape; attribute float aState; attribute float aSize; attribute float aSprite; attribute float aConf; attribute float aMod;
+      uniform float uScale; uniform float uDpr; uniform float uIcons; varying vec3 vColor; varying float vShape; varying float vState; varying float vSprite; varying float vConf; varying float vMod;
       void main(){ if (aSize < 0.01) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; return; }
         vec4 mv = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * mv;
-        vColor = aColor; vShape = aShape; vState = aState; vSprite = aSprite; vConf = aConf;
+        vColor = aColor; vShape = aShape; vState = aState; vSprite = aSprite; vConf = aConf; vMod = aMod;
         if (uIcons > 0.5) {
           float want = clamp(aSize * uScale * 1.3 / -mv.z, 32.0 * uDpr, 84.0 * uDpr);
           if (aState < 0.5) want *= 0.85; if (aState > 1.5) want *= 1.2; if (aState > 2.5) want *= 1.15;
           float px = max(1.0, floor(want * 0.74 / 18.0 + 0.5));
-          gl_PointSize = px * 18.0 / 0.74; return;
+          gl_PointSize = px * 18.0 / 0.74 * (1.0 + 0.3 * aMod); return;   // modern points get a margin for their halo
         }
         float s = clamp(aSize * uScale * 0.9 / -mv.z, 12.0 * uDpr, 30.0 * uDpr);
         if (aState < 0.5) s *= 0.8; if (aState > 1.5) s *= 1.3; if (aState > 2.5) s *= 1.2;
         gl_PointSize = s; }`,
-    fragmentShader: `uniform float uTime; uniform float uIcons; uniform sampler2D uAtlas; uniform vec2 uGrid;
-      varying vec3 vColor; varying float vShape; varying float vState; varying float vSprite; varying float vConf;
+    fragmentShader: `uniform float uTime; uniform float uMotion; uniform float uIcons; uniform sampler2D uAtlas; uniform vec2 uGrid;
+      varying vec3 vColor; varying float vShape; varying float vState; varying float vSprite; varying float vConf; varying float vMod;
       const vec3 VELLUM = vec3(0.94, 0.89, 0.80); const vec3 INK = vec3(0.10, 0.07, 0.04); const vec3 GOLD = vec3(0.88, 0.73, 0.39);
       void main(){
-        vec2 pc = gl_PointCoord; float dd = length(pc - 0.5) * 2.0; bool sel = vState > 2.5; bool ahead = vState < 0.5;
+        vec2 pc = gl_PointCoord; bool sel = vState > 2.5; bool ahead = vState < 0.5;
+        if (uIcons > 0.5 && vMod > 0.5) {   // modern: shrink the icon back to its normal size inside the larger point, then draw a pulsing halo in the margin
+          pc = (pc - 0.5) * 1.3 + 0.5;
+          float r0 = length(pc - 0.5) * 2.0;
+          if (r0 > 1.0) {
+            float u = clamp((r0 - 1.0) / 0.3, 0.0, 1.0); if (u >= 1.0) discard;
+            float wave = uMotion > 0.5 ? 0.5 + 0.5 * sin(uTime * 2.4 - u * 7.0) : 0.6;
+            float a = (1.0 - u) * (0.25 + 0.5 * wave); if (ahead) a *= 0.4;
+            gl_FragColor = vec4(mix(vColor, vec3(1.0), 0.35), a); return;
+          }
+        }
+        float dd = length(pc - 0.5) * 2.0;
         if (uIcons > 0.5) {
           vec2 q = (pc - 0.5) / 0.74 + 0.5;
           if (q.x >= 0.0 && q.x <= 1.0 && q.y >= 0.0 && q.y <= 1.0) {
@@ -1498,6 +1525,7 @@ function buildUI() {
   $('#btnMotion').setAttribute('aria-pressed', S.motion);
   $('#btnMotion').addEventListener('click', (e) => { S.motion = !S.motion; e.currentTarget.setAttribute('aria-pressed', S.motion); try { localStorage.setItem('inferno-motion', S.motion ? '1' : '0'); } catch (err) {}
     toast(S.motion ? 'Motion on: crowds march, rivers flow, the falls pour. Tap a figure to see who they are and why' : 'Motion off: crowds, rivers and the falls hold still'); });
+  $('#jcap').addEventListener('click', () => { if (S.playing) pausePlay(); });   // tap the caption to hold it
   try { const v = localStorage.getItem('inferno-captions'); if (v === '0' || v === '1') JRN.on = v === '1'; } catch (e) {}
   $('#btnCaps').setAttribute('aria-pressed', JRN.on);
   $('#btnCaps').addEventListener('click', (e) => {
@@ -1601,7 +1629,7 @@ function bindControls(c) {
     if (k === 'i') { toggleIcons(); return; }
     if (k === 'r') { resetView(); return; }
     if (k === 'f' && S.sel) { frameNode(S.sel); return; }
-    if (k === 'escape') { clearSel(); return; }
+    if (k === 'escape') { if (!S.playing && JRN.shown) { jDismiss(); return; } clearSel(); return; }
     if (k === '[' || k === ',') setCanto(Math.floor(S.canto - 0.001));
     if (k === ']' || k === '.') setCanto(Math.floor(S.canto) + 1);
     keys.add(k);
@@ -1731,7 +1759,7 @@ function hoverAt(x, y) {
 /* hover strip: a node under the pointer wins over a level label */
 function renderStrip() {
   const el = $('#strip'), n = S.hover, L = !n && S.hoverLv;
-  if (!n && !L) { el.classList.remove('on'); return; }
+  if ((!n && !L) || !$('#detail').hidden) { el.classList.remove('on'); return; }   // the hover strip would sit on top of an open card
   el.style.setProperty('--band', bandCss(n ? LV[n.lv] : L));
   if (n) {
     el.innerHTML = `${icon(n.sprite, 30)}<span class="nm">${esc(n.n)}</span><span class="cat">${esc(KIND[n.k].en)} · ${esc(n.sin || LV[n.lv].sin)}</span><span class="desc">${esc(n.note)}</span><span class="cite">${esc(n.cite)}</span>`;
@@ -1741,7 +1769,7 @@ function renderStrip() {
   }
   el.classList.add('on');
 }
-function clickAt(x, y) { const n = pick(x, y); if (n) { selectNode(n); return; } const t = sceneTarget(x, y); if (t) { if (t.n) selectNode(t.n); else selectLevel(t.L); return; } if (S.sel || S.selLevel) clearSel(); }   // a tap on empty map closes the open card
+function clickAt(x, y) { jDismiss(); const n = pick(x, y); if (n) { selectNode(n); return; } const t = sceneTarget(x, y); if (t) { if (t.n) selectNode(t.n); else selectLevel(t.L); return; } if (S.sel || S.selLevel) clearSel(); }   // a tap on empty map closes the open card
 const labelPool = new Map();
 function label(key, text, cls) {
   let el = labelPool.get(key);
@@ -1830,6 +1858,9 @@ function journeyStep(s, dt, canto, stops) {
 }
 /* the book edition stops at guardians, places and events; once the modern layer is merged, only the modern points stop the journey (keeps the run short) */
 function stopEligible(n, hasModern) { return n.modern ? n.k === 'mevent' || n.k === 'mpattern' : !hasModern && (n.k === 'guardian' || n.k === 'place' || n.k === 'event'); }
+/* pause keeps a caption that is holding (so it can be read), anything else drops; play resumes that same hold or starts fresh */
+function journeyOnPause(s) { return s && s.phase === 'hold' ? s : null; }
+function journeyOnPlay(s, stops, canto) { return s && s.phase === 'hold' ? s : journeyReset(stops, canto); }
 function trimSub(text) {
   text = String(text || '').replace(/\s+/g, ' ').trim();
   if (text.length <= JOURNEY.SUB_MAX) return text;
@@ -1852,28 +1883,32 @@ function buildStops() {
     if (best >= 0) { const x = captionText(n, LV[n.lv]); JRN.cand.push({ id: n.id, c: Math.min(JOURNEY.LAST_CANTO, cs[best]), len: x.title.length + x.sub.length + x.pun.length }); }
   });
 }
+function jHeld(on) { const el = $('#jcap'); if (el) el.classList.toggle('held', !!on); }
 function jShow(x) {
   const el = $('#jcap'); if (!el) return;
-  if (!x || x.alpha <= 0.001) { if (!el.hidden) { el.hidden = true; el.style.opacity = 0; } if (JRN.shown) { JRN.shown = null; S.hover = null; refreshMarkers(); } return; }
+  if (!x || x.alpha <= 0.001) { if (!el.hidden) { el.hidden = true; el.style.opacity = 0; } $('#app').classList.remove('capshow'); jHeld(false); if (JRN.shown) { JRN.shown = null; S.hover = null; refreshMarkers(); } return; }
   const n = NODE[x.stop.id];
   if (JRN.shown !== n) {
     JRN.shown = n; const c = captionText(n, LV[n.lv]);
     el.querySelector('.jwhere').textContent = c.where; el.querySelector('.jtitle').textContent = c.title;
     el.querySelector('.jsub').textContent = c.sub; el.querySelector('.jpun').textContent = c.pun ? (n.modern ? 'In Dante, this circle: ' : n.k === 'soul' ? 'Punishment: ' : 'In this circle: ') + c.pun : '';
     el.querySelector('.jsub').hidden = !c.sub; el.querySelector('.jpun').hidden = !c.pun;
+    el.classList.toggle('modern', !!n.modern); el.querySelector('.jtag').textContent = n.modern ? (n.k === 'mpattern' ? 'NOW · PATTERN' : 'NOW · DOCUMENTED') : ''; el.querySelector('.jtag').hidden = !n.modern;
     S.hover = n; refreshMarkers();
   }
-  el.hidden = false; const a = x.alpha, lift = S.motion ? 14 : 0, part = (lo, hi) => jSmooth((a - lo) / (hi - lo));
+  el.hidden = false; $('#app').classList.add('capshow'); const a = x.alpha, lift = S.motion ? 14 : 0, part = (lo, hi) => jSmooth((a - lo) / (hi - lo));
   el.style.opacity = part(0, 0.5);
   [['.jwhere', 0, 0.45], ['.jtitle', 0.1, 0.6], ['.jrule', 0.3, 0.8], ['.jsub', 0.45, 0.9], ['.jpun', 0.6, 1]].forEach(([q, lo, hi]) => { const e = el.querySelector(q), v = part(lo, hi); e.style.opacity = v; e.style.transform = q === '.jrule' ? `scaleX(${v})` : `translateY(${(1 - v) * lift}px)`; });
 }
 
 /* ======================= playback ======================= */
 function toggleIcons() { S.icons = !S.icons; markerMat.uniforms.uIcons.value = S.icons ? 1 : 0; $('#btnIcons').setAttribute('aria-pressed', S.icons); }
-function togglePlay() { S.playing ? stopPlay() : startPlay(); }
+function togglePlay() { S.playing ? pausePlay() : startPlay(); }
 /* cantos per second while playing the journey: about 6 minutes end to end, slow enough to watch each circle's scenes */
 const PLAY_RATE = 0.1;
-function startPlay() { if (S.canto >= 34.99) setCanto(1); JRN.stops = JRN.on ? planStops(JRN.cand.filter((x) => live(NODE[x.id]))) : []; JRN.st = journeyReset(JRN.stops, S.canto); S.playing = true; S.follow = true; if (S.fly) toggleFly(); $('#btnPlay').setAttribute('aria-pressed', 'true'); $('#playLbl').textContent = '❚❚ Pause'; }
+function startPlay() { if (S.canto >= 34.99) setCanto(1); JRN.stops = JRN.on ? planStops(JRN.cand.filter((x) => live(NODE[x.id]))) : []; JRN.st = journeyOnPlay(JRN.st, JRN.stops, S.canto); S.playing = true; jHeld(false); S.follow = true; if (S.fly) toggleFly(); $('#btnPlay').setAttribute('aria-pressed', 'true'); $('#playLbl').textContent = '❚❚ Pause'; }
+function pausePlay() { S.playing = false; S.follow = false; $('#btnPlay').setAttribute('aria-pressed', 'false'); $('#playLbl').textContent = '▶ Play the journey'; JRN.st = journeyOnPause(JRN.st); if (JRN.st) jHeld(true); else jShow(null); }   // a holding caption stays up to be read
+function jDismiss() { if (!S.playing && JRN.shown) { JRN.st = null; jShow(null); } }                                                            // click on the map, Esc, or scrubbing puts a paused caption away
 function stopPlay() { S.playing = false; S.follow = false; JRN.st = null; jShow(null); $('#btnPlay').setAttribute('aria-pressed', 'false'); $('#playLbl').textContent = '▶ Play the journey'; }
 
 /* ======================= loop ======================= */
@@ -1881,10 +1916,10 @@ function loop() {
   const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
   let jr = null;
   if (S.playing) { jr = JRN.st ? journeyStep(JRN.st, dt, S.canto, JRN.stops) : { rate: 1, alpha: 0, stop: null }; setCanto(S.canto + dt * PLAY_RATE * jr.rate); if (S.canto >= 35) stopPlay(); else jShow(jr); }
-  JRN.pull = jr ? jr.alpha : 0;
+  JRN.pull = jr ? jr.alpha : (JRN.st && JRN.st.phase === 'hold' ? 1 : 0);
   updateCamera(dt); syncGauge(); updateFade(dt);
   if (S.motion) { tickParticles(dt); tickTableaux(t); updateLucifer(dt); wings.forEach((w, i) => (w.rotation.z = Math.sin(t * 0.9 + i * 1.3) * 0.12)); pilgrim.rotation.y = t * 1.2; }
-  markerMat.uniforms.uTime.value = t;
+  markerMat.uniforms.uTime.value = t; markerMat.uniforms.uMotion.value = S.motion ? 1 : 0;
   renderer.render(scene, camera);
   updateLabels();
   requestAnimationFrame(loop);
