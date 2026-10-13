@@ -1274,9 +1274,17 @@ function linkName(id) { return NODE[id] ? NODE[id].n : LV[id] ? `${LV[id].name}`
 const CONF_LABEL = { record: 'Record: ruling, official report or archive', reported: 'Attributed reporting', concept: 'Concept from published research' };
 const safeUrl = (u) => (/^https?:\/\//i.test(u) ? u : '#');   // sources are checked at build time too; this is the last line of defence
 const srcChip = (s) => `<a class="src" href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener noreferrer"><b>${esc(s.title)}</b><span>${esc(s.publisher)} · ${esc(s.date)}</span></a>${s.archive ? `<a class="src arc" href="${esc(safeUrl(s.archive))}" target="_blank" rel="noopener noreferrer">archived copy</a>` : ''}`;
+/* on a book card: the documented modern entries placed in the same circle that this card does not already link to (the editor's reading, always labelled) */
+function modernHere(n) {
+  if (!HAS_MODERN) return '';
+  const linked = new Set(n.links.map(({ to }) => to));
+  const list = NODES.filter((m) => m.modern && m.lv === n.lv && live(m) && !linked.has(m.id));
+  if (!list.length) return '';
+  return `<div class="sect">In this circle, today <span class="badge editorial">editorial</span></div><div class="links">${list.map((m) => `<button class="linkbtn" data-go="${esc(m.id)}" style="--c:${KIND[m.k].css}"><b>${icon(m.sprite, 22)}${esc(m.n)}</b><span>${esc(KIND[m.k].en)} · <span class="cite">${esc(m.cite)}</span></span></button>`).join('')}</div>`;
+}
 function renderModernCard(n) {
   const L = LV[n.lv], K = KIND[n.k], pattern = n.k === 'mpattern', srcs = (n.sources || []).map((id) => SRC[id]).filter(Boolean);
-  const E = n.echoes && (NODE[n.echoes] || LV[n.echoes]) ? n.echoes : null;
+  const echoes = n.links.filter(({ e }) => e.t === 'modern' && e.a === n.id).map(({ to, e }) => ({ to, note: e.note })).concat(n.links.length ? [] : (n.echoes && (NODE[n.echoes] || LV[n.echoes]) ? [{ to: n.echoes, note: 'Echoes' }] : []));   // every book point or circle this entry echoes, the first with 'Echoes', the rest with their own note
   return `<button class="x" aria-label="Close">×</button>
     <div class="dhead"><div class="roundel" style="--ring:${K.css}">${icon(n.sprite, 64)}</div>
       <div><div class="eyebrow">${K.la} · ${K.en}</div><h2${n.n.length > 60 ? ' class="long2"' : n.n.length > 36 ? ' class="long"' : ''}>${esc(n.n)}</h2>
@@ -1290,7 +1298,7 @@ function renderModernCard(n) {
     ${pattern && n.learnMore && n.learnMore.length ? `<div class="sect">Learn more</div><div class="srcs">${n.learnMore.map((m) => `<a class="src" href="${esc(safeUrl(m.u))}" target="_blank" rel="noopener noreferrer"><b>${esc(m.t)}</b></a>`).join('')}</div>` : ''}
     <div class="sect">Why it sits here <span class="badge editorial">editorial</span></div>
     <p class="parallel">${esc(n.parallel)}</p>
-    ${E ? `<div class="links"><button class="linkbtn" data-go="${esc(E)}" style="--c:#5fc4c9"><b>${NODE[E] ? icon(NODE[E].sprite, 22) : ''}Echoes: ${esc(linkName(E))}</b><span>${NODE[E] ? `<span class="cite">${esc(NODE[E].cite)}</span>` : 'the circle whose sin in the poem this echoes'}</span></button></div>` : ''}
+    ${echoes.length ? `<div class="links">${echoes.map(({ to, note }) => `<button class="linkbtn" data-go="${esc(to)}" style="--c:#5fc4c9"><b>${NODE[to] ? icon(NODE[to].sprite, 22) : ''}${note === 'Echoes' ? 'Echoes: ' : ''}${esc(linkName(to))}</b><span>${note !== 'Echoes' ? `${esc(note)} · ` : ''}${NODE[to] ? `<span class="cite">${esc(NODE[to].cite)}</span>` : 'the circle whose sin in the poem this echoes'}</span></button>`).join('')}</div>` : ''}
     <div class="actions"><button class="btn" data-act="center">Look closer <span class="key">F</span></button><button class="btn" data-act="jump">Journey here</button></div>`;
 }
 function renderDetail() {
@@ -1308,6 +1316,7 @@ function renderDetail() {
       <p class="note">${esc(n.note)}</p>
       ${n.it || n.en ? `<div class="verse">${n.it ? `<div class="it">${esc(n.it)}</div>` : ''}${n.en ? `<div class="en">${esc(n.en)}</div>` : ''}</div>` : ''}
       ${n.links.some(({ to }) => liveId(to)) ? `<div class="sect">Nexus · Connections</div><div class="links">${n.links.filter(({ to }) => liveId(to)).map(({ to, e }) => `<button class="linkbtn" data-go="${to}" style="--c:${(EDGE[e.t] || EDGE.echo)[0] === '#efe4cc' ? '#2a1d12' : (EDGE[e.t] || EDGE.echo)[0]}"><b>${NODE[to] ? icon(NODE[to].sprite, 22) : ''}${esc(linkName(to))}</b><span>${esc(e.note)}${e.cite ? ` · <span class="cite">${esc(e.cite)}</span>` : ''}${e.conf === 'interp' ? ' · interpretive' : ''}</span></button>`).join('')}</div>` : ''}
+      ${modernHere(n)}
       <div class="actions"><button class="btn" data-act="center">Look closer <span class="key">F</span></button><button class="btn" data-act="jump">Go to Canto ${ROMAN[n.canto]}</button></div>`;
   } else {
     const L = S.selLevel, list = NODES.filter((n) => n.lv === L.id && live(n)), st = levelState(L);

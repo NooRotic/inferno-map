@@ -24,10 +24,23 @@ export function mergeModern(base, modern, baseSprites = {}, modernSprites = {}) 
     if (!(n.unlocks >= 1 && n.unlocks <= 35)) throw new Error(`${at}: unlocks must be a canto from 1 to 35`);
     for (const sid of n.sources || []) if (!sources[sid]) throw new Error(`${at}: unknown source "${sid}"`);
     if (n.echoes && !baseIds.has(n.echoes) && !levelIds.has(n.echoes)) throw new Error(`${at}: echoes "${n.echoes}" is not a book point or level`);
+    const also = [];
+    if (n.also != null) {
+      if (!Array.isArray(n.also)) throw new Error(`${at}: also must be a list of book point ids or { to, note }`);
+      for (const x of n.also) {
+        const to = typeof x === 'string' ? x : x && x.to, note = typeof x === 'string' ? 'Echoes' : x && x.note;
+        if (typeof to !== 'string') throw new Error(`${at}: each also entry needs a "to" id`);
+        if (!baseIds.has(to) && !levelIds.has(to)) throw new Error(`${at}: also "${to}" is not a book point or level`);
+        if (to === n.echoes || also.some((y) => y.to === to)) throw new Error(`${at}: also "${to}" is already linked`);
+        if (typeof note !== 'string' || !note.trim()) throw new Error(`${at}: also "${to}" needs a non-empty note`);
+        also.push({ to, note });
+      }
+    }
     seen.add(n.id);
     const pattern = n.k === 'pattern';
     nodes.push({ ...n, k: KINDS[n.k], modern: true, cite: (pattern ? n.term : n.when) || '', note: (pattern ? n.definition : n.summary) || '' });
     if (n.echoes) edges.push({ a: n.id, b: n.echoes, t: 'modern', cite: '', note: 'Echoes' });
+    for (const x of also) edges.push({ a: n.id, b: x.to, t: 'modern', cite: '', note: x.note });
   }
   const ends = new Set([...baseIds, ...seen, ...levelIds]);
   for (const e of modern.edges || []) {

@@ -87,3 +87,18 @@ test('legend entries are validated: shape, known icon, non-empty label', () => {
   assert.throws(() => go([{ icon: 'a', label: '' }]), /legend entry 1: label must be a non-empty string/);
   assert.throws(() => go([{ icon: 'a' }]), /legend entry 1: label must be a non-empty string/);
 });
+
+test('also: extra book points a modern entry echoes become extra echo edges, each with its own short note', () => {
+  const b = base(); b.nodes.push({ id: 'b2', lv: 'lv1' });
+  const { data } = mergeModern(b, { nodes: [ev({ also: ['b2', { to: 'lv1', note: 'Same kind of act' }] })], sources: [src] });
+  const mine = data.edges.filter((e) => e.a === 'm1');
+  assert.deepEqual(mine.map((e) => [e.b, e.t, e.note]), [['b1', 'modern', 'Echoes'], ['b2', 'modern', 'Echoes'], ['lv1', 'modern', 'Same kind of act']]);
+});
+
+test('also: rejects unknown targets, duplicates of echoes, and a non-list', () => {
+  assert.throws(() => run([ev({ also: ['zzz'] })]), /also "zzz"/);
+  assert.throws(() => run([ev({ also: ['b1'] })]), /also "b1".*already/);
+  assert.throws(() => run([ev({ also: 'b1' })]), /also must be a list/);
+  assert.throws(() => run([ev({ also: [{ note: 'x' }] })]), /also entry/);
+  assert.throws(() => run([ev({ also: [{ to: 'lv1', note: '' }] })]), /note/);
+});
