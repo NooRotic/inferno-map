@@ -261,6 +261,8 @@ button { font: inherit; color: inherit; }
 .state.current { background: var(--gold); border-color: var(--gold); color: #1a120a; }
 .legend-grid { display: grid; grid-template-columns: 26px 1fr; gap: 6px 10px; align-items: center; font-size: 15px; }
 .swatch { width: 22px; height: 14px; display: inline-block; border: 1px solid rgba(0,0,0,.3); }
+.roundel.sq { border-radius: 26%; }
+.ringsw.sq { border-radius: 26%; }
 .ringsw { width: 20px; height: 20px; border-radius: 50%; background: var(--vellum-2); box-shadow: 0 0 0 3px var(--c) inset; display: inline-block; }
 .legend-p { font-size: 15px; line-height: 1.45; margin: 8px 0; }
 
@@ -1003,7 +1005,7 @@ function buildMarkers() {
         vec2 pc = gl_PointCoord; bool sel = vState > 2.5; bool ahead = vState < 0.5;
         if (uIcons > 0.5 && vMod > 0.5) {   // modern: shrink the icon back to its normal size inside the larger point, then draw a pulsing halo in the margin
           pc = (pc - 0.5) * 1.3 + 0.5;
-          float r0 = length(pc - 0.5) * 2.0;
+          vec2 ab = abs(pc - 0.5) * 2.0; float r0 = pow(pow(ab.x, 4.0) + pow(ab.y, 4.0), 0.25);   // modern badges are squircles, so they read differently from the round book markers
           if (r0 > 1.0) {
             float u = clamp((r0 - 1.0) / 0.3, 0.0, 1.0); if (u >= 1.0) discard;
             float wave = uMotion > 0.5 ? 0.5 + 0.5 * sin(uTime * 2.4 - u * 7.0) : 0.6;
@@ -1012,6 +1014,7 @@ function buildMarkers() {
           }
         }
         float dd = length(pc - 0.5) * 2.0;
+        if (uIcons > 0.5 && vMod > 0.5) { vec2 ab2 = abs(pc - 0.5) * 2.0; dd = pow(pow(ab2.x, 4.0) + pow(ab2.y, 4.0), 0.25); }
         if (uIcons > 0.5) {
           vec2 q = (pc - 0.5) / 0.74 + 0.5;
           if (q.x >= 0.0 && q.x <= 1.0 && q.y >= 0.0 && q.y <= 1.0) {
@@ -1312,7 +1315,7 @@ function renderModernCard(n) {
   const L = LV[n.lv], K = KIND[n.k], pattern = n.k === 'mpattern', srcs = (n.sources || []).map((id) => SRC[id]).filter(Boolean);
   const echoes = n.links.filter(({ e }) => e.t === 'modern' && e.a === n.id).map(({ to, e }) => ({ to, note: e.note })).concat(n.links.length ? [] : (n.echoes && (NODE[n.echoes] || LV[n.echoes]) ? [{ to: n.echoes, note: 'Echoes' }] : []));   // every book point or circle this entry echoes, the first with 'Echoes', the rest with their own note
   return `<button class="x" aria-label="Close">×</button>
-    <div class="dhead"><div class="roundel" style="--ring:${K.css}">${icon(n.sprite, 64)}</div>
+    <div class="dhead"><div class="roundel sq" style="--ring:${K.css}">${icon(n.sprite, 64)}</div>
       <div><div class="eyebrow">${K.la} · ${K.en}</div><div class="nowtag">${pattern ? 'NOW · PATTERN' : 'NOW · DOCUMENTED'}</div><h2 class="mod${n.n.length > 60 ? ' long2' : n.n.length > 36 ? ' long' : ''}">${esc(n.n)}</h2>
       <div class="where">${esc(L.la || L.name)} · <span class="cite">${esc(n.cite)}</span></div></div></div>
     <div class="badges"><span class="badge conf-${esc(n.conf)}">${esc(CONF_LABEL[n.conf] || n.conf || '')}</span>${n.asOf ? `<span class="badge">as of ${esc(n.asOf)}</span>` : ''}${pattern && n.termStatus ? `<span class="badge">${n.termStatus === 'popular' ? 'popular usage' : 'scholarly term'}</span>` : ''}${bandBadge(L)}</div>
@@ -1395,7 +1398,7 @@ function renderDrawer() {
         <span class="swatch" style="background:#4a443e"></span><span>In shadow: not yet reached</span>
         <span class="swatch" style="background:#d0442f"></span><span>Rubric: the circle you chose</span>
         ${(D.meta.bands || []).map((b) => `<span class="swatch" style="background:${b.css}"></span><span>${esc(b.la)} · ${esc(b.name)}: floor tint, label edge</span>`).join('')}
-        ${Object.entries(KIND).filter(([, K]) => !K.modern || HAS_MODERN).map(([k, K]) => `<span class="ringsw" style="--c:${K.css}"></span><span>${K.la} · ${K.en}</span>`).join('')}
+        ${Object.entries(KIND).filter(([, K]) => !K.modern || HAS_MODERN).map(([k, K]) => `<span class="ringsw${K.modern ? ' sq' : ''}" style="--c:${K.css}"></span><span>${K.la} · ${K.en}</span>`).join('')}
         ${['pair', 'betray', 'cause', 'fate', 'echo'].concat(HAS_MODERN ? ['modern'] : []).map((k) => `<span class="swatch" style="background:${EDGE[k][0]};height:3px"></span><span>${EDGE[k][1]}</span>`).join('')}
       </div>
       <p class="legend-p"><b>Stated in the text</b> means Dante says it. <b>Interpretive</b> means it comes from tradition or commentators.</p>
