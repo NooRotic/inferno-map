@@ -102,3 +102,22 @@ test('also: rejects unknown targets, duplicates of echoes, and a non-list', () =
   assert.throws(() => run([ev({ also: [{ note: 'x' }] })]), /also entry/);
   assert.throws(() => run([ev({ also: [{ to: 'lv1', note: '' }] })]), /note/);
 });
+
+const FL = { US: { shapes: [{ t: 'r', x: 0, y: 0, w: 24, h: 16, f: '#c1272d' }, { t: 'p', pts: [[0, 0], [5, 0], [0, 5]], f: '#1d3d70' }, { t: 'c', cx: 12, cy: 8, r: 3, f: '#ffffff' }, { t: 'l', x1: 0, y1: 0, x2: 24, y2: 16, w: 2, f: '#f4f0e0' }] } };
+
+test('flags: the flag set passes into meta and a node may name one', () => {
+  const { data } = mergeModern(base(), { nodes: [ev({ flag: 'US' })], sources: [src], flags: FL });
+  assert.deepEqual(data.meta.flags, FL);
+  assert.equal(data.nodes.at(-1).flag, 'US');
+  assert.equal(mergeModern(base(), { nodes: [ev()], sources: [src] }).data.meta.flags, null);
+});
+
+test('flags: rejects a node flag that is not in the set, and malformed specs', () => {
+  assert.throws(() => mergeModern(base(), { nodes: [ev({ flag: 'XX' })], sources: [src], flags: FL }), /flag "XX"/);
+  assert.throws(() => mergeModern(base(), { nodes: [ev({ flag: 'US' })], sources: [src] }), /flag "US"/);
+  assert.throws(() => mergeModern(base(), { nodes: [ev()], sources: [src], flags: { us: FL.US } }), /two capital letters/);
+  assert.throws(() => mergeModern(base(), { nodes: [ev()], sources: [src], flags: { US: { shapes: [] } } }), /shapes/);
+  assert.throws(() => mergeModern(base(), { nodes: [ev()], sources: [src], flags: { US: { shapes: [{ t: 'z' }] } } }), /shape/);
+  assert.throws(() => mergeModern(base(), { nodes: [ev()], sources: [src], flags: { US: { shapes: [{ t: 'r', x: 0, y: 0, w: 24, h: 16, f: 'red' }] } } }), /colou?r/);
+  assert.throws(() => mergeModern(base(), { nodes: [ev()], sources: [src], flags: { US: { shapes: [{ t: 'r', x: 0, y: 0, w: 'a', h: 16, f: '#ffffff' }] } } }), /number/);
+});

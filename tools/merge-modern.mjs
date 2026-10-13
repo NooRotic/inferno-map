@@ -36,6 +36,7 @@ export function mergeModern(base, modern, baseSprites = {}, modernSprites = {}) 
         also.push({ to, note });
       }
     }
+    if (n.flag != null && !(modern.flags && Object.prototype.hasOwnProperty.call(modern.flags, n.flag))) throw new Error(`${at}: flag "${n.flag}" is not in the flag set`);
     seen.add(n.id);
     const pattern = n.k === 'pattern';
     nodes.push({ ...n, k: KINDS[n.k], modern: true, cite: (pattern ? n.term : n.when) || '', note: (pattern ? n.definition : n.summary) || '' });
@@ -47,9 +48,10 @@ export function mergeModern(base, modern, baseSprites = {}, modernSprites = {}) 
     for (const end of [e.a, e.b]) if (!ends.has(end)) throw new Error(`modern edge end "${end}" is not a point or level`);
     edges.push(e);
   }
+  if (modern.flags != null) checkFlags(modern.flags);
   const data = {
     ...base,
-    meta: { ...base.meta, modernEdition: true, coverage: modern.coverage || null, legend: modern.legend || null },
+    meta: { ...base.meta, modernEdition: true, coverage: modern.coverage || null, legend: modern.legend || null, flags: modern.flags || null },
     nodes: [...base.nodes, ...nodes],
     edges: [...(base.edges || []), ...edges],
     sources,
@@ -72,4 +74,22 @@ export function mergeModern(base, modern, baseSprites = {}, modernSprites = {}) 
     });
   }
   return { data, sprites: out };
+}
+
+/* a flag is a few flat shapes on a 24 x 16 canvas: rect {t:'r',x,y,w,h,f}, polygon {t:'p',pts,f}, circle {t:'c',cx,cy,r,f}, line {t:'l',x1,y1,x2,y2,w,f}; f is a #rrggbb colour */
+const NUM = { r: ['x', 'y', 'w', 'h'], c: ['cx', 'cy', 'r'], l: ['x1', 'y1', 'x2', 'y2', 'w'] };
+function checkFlags(flags) {
+  if (typeof flags !== 'object' || Array.isArray(flags)) throw new Error('flags must be an object keyed by country code');
+  for (const [cc, spec] of Object.entries(flags)) {
+    const at = `flag "${cc}"`;
+    if (!/^[A-Z]{2}$/.test(cc)) throw new Error(`${at}: the key must be two capital letters`);
+    if (!spec || !Array.isArray(spec.shapes) || !spec.shapes.length) throw new Error(`${at}: needs a non-empty shapes list`);
+    spec.shapes.forEach((s, i) => {
+      const w = `${at} shape ${i + 1}`;
+      if (!s || !(s.t === 'p' || s.t in NUM)) throw new Error(`${w}: unknown shape type`);
+      if (!/^#[0-9a-fA-F]{6}$/.test(s.f || '')) throw new Error(`${w}: f must be a #rrggbb colour`);
+      if (s.t === 'p') { if (!Array.isArray(s.pts) || s.pts.length < 3 || !s.pts.every((p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite))) throw new Error(`${w}: pts must be 3 or more [x, y] number pairs`); }
+      else for (const k of NUM[s.t]) if (!Number.isFinite(s[k])) throw new Error(`${w}: ${k} must be a number`);
+    });
+  }
 }

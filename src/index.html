@@ -141,6 +141,8 @@ button { font: inherit; color: inherit; }
 /* modern entries read differently from the poem: a narrow grotesque title and a typewriter tag, in the entry's own colour */
 #jcap .jtag { display: inline-block; font-family: 'Special Elite', 'Courier New', monospace; font-size: 12px; letter-spacing: .16em; color: #7fe3ea; border: 1px solid currentColor; border-radius: 2px; padding: 1px 7px 0; margin-top: 8px; }
 #jcap.modern .jtag { color: #7fe3ea; }
+.flagchip { display: inline-block; width: 24px; height: 16px; vertical-align: -3px; margin-right: 8px; border: 1px solid rgba(0,0,0,.55); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+#jcap .jtag .flagchip { vertical-align: -4px; }
 #jcap.modern .jtitle { font-family: 'Archivo Narrow', 'Arial Narrow', sans-serif; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
 #jcap.modern .jrule { background: linear-gradient(90deg, #7fe3ea, rgba(127,227,234,0)); }
 @media (max-width: 1100px) { #jcap { width: min(640px, calc(100% - 32px)); } }
@@ -1282,6 +1284,18 @@ function modernHere(n) {
   if (!list.length) return '';
   return `<div class="sect">In this circle, today <span class="badge editorial">editorial</span></div><div class="links">${list.map((m) => `<button class="linkbtn" data-go="${esc(m.id)}" style="--c:${KIND[m.k].css}"><b>${icon(m.sprite, 22)}${esc(m.n)}</b><span>${esc(KIND[m.k].en)} · <span class="cite">${esc(m.cite)}</span></span></button>`).join('')}</div>`;
 }
+/* a small drawn flag (the data supplies the shapes; Windows draws no flag emoji) for the country where an entry happened; it marks the place, never who is to blame */
+function flagChip(n) {
+  const spec = n && n.flag && D.meta.flags && D.meta.flags[n.flag]; if (!spec) return '';
+  const body = spec.shapes.map((s) => {
+    const f = `fill="${esc(s.f)}"`;
+    if (s.t === 'r') return `<rect x="${+s.x}" y="${+s.y}" width="${+s.w}" height="${+s.h}" ${f}/>`;
+    if (s.t === 'c') return `<circle cx="${+s.cx}" cy="${+s.cy}" r="${+s.r}" ${f}/>`;
+    if (s.t === 'l') return `<line x1="${+s.x1}" y1="${+s.y1}" x2="${+s.x2}" y2="${+s.y2}" stroke="${esc(s.f)}" stroke-width="${+s.w}"/>`;
+    return `<polygon points="${s.pts.map((q) => `${+q[0]},${+q[1]}`).join(' ')}" ${f}/>`;
+  }).join('');
+  return `<svg class="flagchip" viewBox="0 0 24 16" width="24" height="16" shape-rendering="crispEdges" role="img" aria-label="Flag of the country where this happened (present-day flag)"><title>Present-day flag of the country where this happened</title><clipPath id="fc${esc(n.flag)}"><rect width="24" height="16"/></clipPath><g clip-path="url(#fc${esc(n.flag)})">${body}</g></svg>`;
+}
 function renderModernCard(n) {
   const L = LV[n.lv], K = KIND[n.k], pattern = n.k === 'mpattern', srcs = (n.sources || []).map((id) => SRC[id]).filter(Boolean);
   const echoes = n.links.filter(({ e }) => e.t === 'modern' && e.a === n.id).map(({ to, e }) => ({ to, note: e.note })).concat(n.links.length ? [] : (n.echoes && (NODE[n.echoes] || LV[n.echoes]) ? [{ to: n.echoes, note: 'Echoes' }] : []));   // every book point or circle this entry echoes, the first with 'Echoes', the rest with their own note
@@ -1292,7 +1306,7 @@ function renderModernCard(n) {
     <div class="badges"><span class="badge conf-${esc(n.conf)}">${esc(CONF_LABEL[n.conf] || n.conf || '')}</span>${n.asOf ? `<span class="badge">as of ${esc(n.asOf)}</span>` : ''}${pattern && n.termStatus ? `<span class="badge">${n.termStatus === 'popular' ? 'popular usage' : 'scholarly term'}</span>` : ''}${bandBadge(L)}</div>
     <div class="sect">What the record shows</div>
     <p class="note">${esc(n.note)}</p>
-    ${n.place ? `<p class="where">${esc(n.place)}</p>` : ''}
+    ${n.place ? `<p class="where">${flagChip(n)}${esc(n.place)}</p>` : ''}
     ${pattern && n.recognize && n.recognize.length ? `<div class="sect">Recognize it</div><ul class="recog">${n.recognize.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
     <div class="sect">Sources</div><div class="srcs">${srcs.map(srcChip).join('')}</div>
     ${pattern && n.learnMore && n.learnMore.length ? `<div class="sect">Learn more</div><div class="srcs">${n.learnMore.map((m) => `<a class="src" href="${esc(safeUrl(m.u))}" target="_blank" rel="noopener noreferrer"><b>${esc(m.t)}</b></a>`).join('')}</div>` : ''}
@@ -1905,7 +1919,7 @@ function jShow(x) {
     el.querySelector('.jwhere').textContent = c.where; el.querySelector('.jtitle').textContent = c.title;
     el.querySelector('.jsub').textContent = c.sub; el.querySelector('.jpun').textContent = c.pun ? (n.modern ? 'In Dante, this circle: ' : n.k === 'soul' ? 'Punishment: ' : 'In this circle: ') + c.pun : '';
     el.querySelector('.jsub').hidden = !c.sub; el.querySelector('.jpun').hidden = !c.pun;
-    el.classList.toggle('modern', !!n.modern); el.querySelector('.jtag').textContent = n.modern ? (n.k === 'mpattern' ? 'NOW · PATTERN' : 'NOW · DOCUMENTED') : ''; el.querySelector('.jtag').hidden = !n.modern;
+    el.classList.toggle('modern', !!n.modern); el.querySelector('.jtag').innerHTML = n.modern ? flagChip(n) + (n.k === 'mpattern' ? 'NOW · PATTERN' : 'NOW · DOCUMENTED') : ''; el.querySelector('.jtag').hidden = !n.modern;
     S.hover = n; refreshMarkers();
   }
   el.hidden = false; $('#app').classList.add('capshow'); const a = x.alpha, lift = S.motion ? 14 : 0, part = (lo, hi) => jSmooth((a - lo) / (hi - lo));
