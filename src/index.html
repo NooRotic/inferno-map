@@ -164,6 +164,7 @@ button { font: inherit; color: inherit; }
 .topbar { position: absolute; left: 0; right: 0; top: 0; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 14px; z-index: 5;
   display: flex; align-items: center; gap: 18px; background: linear-gradient(180deg, rgba(8,6,4,.92), rgba(8,6,4,0)); }
 .brand { font-family: var(--font-display); font-weight: 700; letter-spacing: .32em; color: var(--gold-hi); font-size: 18px; flex: none; }
+.brandtag { display: inline-block; vertical-align: 3px; margin-left: 12px; letter-spacing: .16em; font-family: 'Special Elite', 'Courier New', monospace; font-weight: 400; font-size: 10px; letter-spacing: .16em; line-height: 1; color: #7fe3ea; border: 1px solid currentColor; border-radius: 2px; padding: .36em 6px .09em; text-shadow: 0 0 10px rgba(127,227,234,.5); }
 .brand small { display: block; font-family: var(--font-body); font-weight: 400; font-style: italic; letter-spacing: 0; color: var(--on-dark-soft); font-size: 13px; margin-top: 1px; }
 .tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
 .tab { background: none; border: 0; border-bottom: 1px solid transparent; padding: 4px 10px; cursor: pointer; font-family: var(--font-display); font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--on-dark-soft); flex: none; }
@@ -662,6 +663,7 @@ function init(data, spriteSpec) {
     .map((n) => ({ ...n, k: KIND[n.k] ? n.k : 'soul', canto: n.unlocks != null ? n.unlocks : cantoOf(n.cite), pos: null, links: [] }));
   NODES.forEach((n) => { n.sprite = PIX.resolve(n.icon, n.k); NODE[n.id] = n; });
   HAS_MODERN = NODES.some((n) => n.modern);
+  if (HAS_MODERN) document.querySelector('.brand small').insertAdjacentHTML('beforebegin', '<span class="brandtag">MODERN DAY</span>');
   if (HAS_MODERN) { try { const v = localStorage.getItem('inferno-now'); if (v === '0' || v === '1') S.now = v === '1'; } catch (e) {} }
   D.edges = (D.edges || []).filter((e) => (NODE_OR_LEVEL(e.a) && NODE_OR_LEVEL(e.b)) || (console.warn('Skipping link with a missing end', e), false));
   NODES.forEach((n) => (n.pos = posOf(n)));
@@ -747,8 +749,9 @@ function buildEarth() {
   const faceA = add(new THREE.Mesh(new THREE.ShapeGeometry(shape, 1), sectMat())); faceA.rotation.y = -W0 * DEG;
   const faceB = add(new THREE.Mesh(new THREE.ShapeGeometry(holeShape, 1), sectMat())); faceB.rotation.y = -W1 * DEG;
   // section edge lines, like an engraved diagram
-  const edgeM = new THREE.LineBasicMaterial({ color: 0x1a120a, transparent: true, opacity: 0.85 });
-  [W0, W1].forEach((a) => add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(outline.concat([outline[0]]).map(([r, y]) => polar(r, a, y))), edgeM.clone())));
+  const edgeM = new THREE.LineBasicMaterial({ color: HAS_MODERN ? 0x7fe3ea : 0x1a120a, transparent: true, opacity: HAS_MODERN ? 0.95 : 0.85 });
+  // with the modern layer the cut edge is a cyan rim: three hairlines a third of a degree apart read as a thicker, softly glowing line
+  (HAS_MODERN ? [-0.35, 0, 0.35] : [0]).forEach((d) => [W0, W1].forEach((a) => { const m = edgeM.clone(); if (d) m.opacity *= 0.45; add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(outline.concat([outline[0]]).map(([r, y]) => polar(r, a + d, y))), m)); }));
   // the tunnel itself (seen from inside the cut)
   add(new THREE.Mesh(new THREE.TubeGeometry(tunnelCurve, 80, 2.1, 10, false), texMat('rock', 8, 1, { side: THREE.BackSide })));
   // Mount Purgatory at the antipode, rising (downward) from the ocean
