@@ -56,6 +56,8 @@ button { font: inherit; color: inherit; }
 .lbl.level:hover { --s: 1.1; color: #fff; background: rgba(48,32,18,.92); border-bottom-color: var(--gold-hi); z-index: 4; }
 
 .lbl.earth { pointer-events: none; font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: .6em; color: var(--gold-hi); opacity: .92; text-shadow: 0 1px 3px #000, 0 0 12px #000; }
+.lbl.earth { text-align: center; line-height: 1.25; }
+.lbl.earth .nowline { color: #7fe3ea; text-shadow: 0 1px 3px #000, 0 0 14px rgba(127,227,234,.55); }
 
 /* ---------- depth gauge: a vertical slider on the left wall, coloured by sin band; desktop widths only ---------- */
 .gauge { display: none; }
@@ -1827,7 +1829,7 @@ function updateLabels() {
   if (!S.fadeLv && cam.dist > 200) {   // name the sphere: on its shoulder, beside the cut that faces the camera
     const c = V(0, CY, 0), dir = camera.position.clone().sub(c).setY(0).normalize().applyAxisAngle(V(0, 1, 0), -0.75);
     const s = toScreen(c.clone().addScaledVector(dir, RS).add(V(0, RS * 0.25, 0)));
-    if (s) { const el = label('EARTH', 'EARTH', 'earth'); place(el, s, -(el._mw || 80) / 2, 0, true); }
+    if (s) { const el = label('EARTH', HAS_MODERN ? 'EARTH<br><span class="nowline">MODERN DAY</span>' : 'EARTH', 'earth'); place(el, s, -(el._mw || 80) / 2, 0, true); }
   }
   if (S.sel) { const s = toScreen(S.sel.pos); if (s) place(label('N:' + S.sel.id, esc(S.sel.n), 'sel'), s, 26, 0, true); }
   if (S.labels) {
