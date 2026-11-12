@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 // stays one self-contained file. This test pulls the block out and runs it in isolation.
 const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'index.html'), 'utf8');
 const m = /\/\* tilt:begin \*\/([\s\S]*?)\/\* tilt:end \*\//.exec(html);
-const T = m ? new Function(`${m[1]}; return { TILT, tiltMatrix, tiltPose, tiltDelta, tiltSpeed };`)() : null;
+const T = m ? new Function(`${m[1]}; return { TILT, tiltMatrix, tiltPose, tiltDelta, tiltSpeed, tiltSpin };`)() : null;
 
 test('the tilt block exists in index.html', () => assert.ok(m, 'missing tilt:begin / tilt:end markers'));
 
@@ -66,4 +66,14 @@ test('tiltSpeed: a dead zone, then a smooth ramp, full at the limit, symmetric',
   const lo = T.TILT.ROLL_DEAD + (T.TILT.ROLL_MAX - T.TILT.ROLL_DEAD) * 0.3, hi = T.TILT.ROLL_DEAD + (T.TILT.ROLL_MAX - T.TILT.ROLL_DEAD) * 0.7;
   near(T.tiltSpeed(-lo), -T.tiltSpeed(lo));
   assert.ok(T.tiltSpeed(lo) < T.tiltSpeed(hi));
+});
+
+test('tiltSpin: aiming steeply up or down spins the Earth, level or gently tilted does not', () => {
+  assert.equal(T.tiltSpin(0), 0);
+  assert.equal(T.tiltSpin(T.TILT.SPIN_START * 0.99), 0);
+  const mid = (T.TILT.SPIN_START + T.TILT.SPIN_FULL) / 2;
+  assert.ok(T.tiltSpin(mid) > 0 && T.tiltSpin(mid) < 1);
+  near(T.tiltSpin(T.TILT.SPIN_FULL), 1); near(T.tiltSpin(Math.PI / 2), 1);
+  near(T.tiltSpin(-mid), -T.tiltSpin(mid)); near(T.tiltSpin(-Math.PI / 2), -1);
+  assert.ok(T.tiltSpin(mid) < T.tiltSpin(T.TILT.SPIN_FULL));
 });
