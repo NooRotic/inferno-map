@@ -1648,7 +1648,10 @@ function bindControls(c) {
     const prev = ptrs.get(e.pointerId); if (!prev) { hoverAt(e.clientX, e.clientY); return; }
     const dx = e.clientX - prev.x, dy = e.clientY - prev.y; moved += Math.abs(dx) + Math.abs(dy); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-      if (S.fly) { if (pinch0) cam.pos.addScaledVector(flyDir(), (d - pinch0) * 0.15); }   // flying: spreading two fingers moves you forward, pinching moves you back
+      if (S.fly) {   // flying: spreading two fingers moves you forward, pinching moves you back; dragging both fingers strafes (sideways, up and down)
+        if (pinch0) cam.pos.addScaledVector(flyDir(), (d - pinch0) * 0.15);
+        if (mid0) { cam.pos.addScaledVector(V(-Math.sin(cam.yaw), 0, Math.cos(cam.yaw)), -(m.x - mid0.x) * 0.12); cam.pos.y += (m.y - mid0.y) * 0.12; }
+      }
       else { if (pinch0) zoomBy(pinch0 / d); pan(m.x - mid0.x, m.y - mid0.y); }
       pinch0 = d; mid0 = m; return; }
     if (S.fly) { cam.yaw += dx * 0.004; cam.pitch = Math.max(-1.5, Math.min(1.5, cam.pitch - dy * 0.004)); return; }
@@ -1689,10 +1692,10 @@ function bindControls(c) {
    wheel (right edge down) flies forward, left edge down flies back. Pure maths only (no DOM, no Three.js): tools/tilt.test.mjs
    pulls this block out and runs it. Angles in radians unless a name ends in Deg. */
 const TILT = {
-  ROLL_DEAD: 0.12,   // about 7 degrees of twist does nothing, so a resting hand does not drift
-  ROLL_MAX: 0.6,     // about 34 degrees is full speed
-  SPEED: 45,         // world units per second at full twist (keyboard Fly is 30, with Shift 90)
-  LOOK_GAIN: 1,      // 1 = the view turns exactly as far as the phone does
+  ROLL_DEAD: 0.08,   // about 5 degrees of twist does nothing, so a resting hand does not drift
+  ROLL_MAX: 0.3,     // about 17 degrees is full speed (was 34: it took nearly a quarter turn to get going)
+  SPEED: 80,         // world units per second at full twist (keyboard Fly is 30, with Shift 90)
+  LOOK_GAIN: 0.6,    // 1 = the view turns exactly as far as the phone does; lower is calmer
   PITCH_LIM: 1.5,
 };
 /* device to earth rotation for the W3C alpha/beta/gamma Euler angles (degrees); columns are the device's x, y, z axes in earth East, North, Up */

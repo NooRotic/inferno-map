@@ -63,6 +63,7 @@ test('tiltSpeed: a dead zone, then a smooth ramp, full at the limit, symmetric',
   const a = T.tiltSpeed((T.TILT.ROLL_DEAD + T.TILT.ROLL_MAX) / 2);
   assert.ok(a > 0 && a < 1);
   near(T.tiltSpeed(T.TILT.ROLL_MAX), 1); near(T.tiltSpeed(3), 1);
-  near(T.tiltSpeed(-0.3), -T.tiltSpeed(0.3));
-  assert.ok(T.tiltSpeed(0.3) < T.tiltSpeed(0.5));
+  const lo = T.TILT.ROLL_DEAD + (T.TILT.ROLL_MAX - T.TILT.ROLL_DEAD) * 0.3, hi = T.TILT.ROLL_DEAD + (T.TILT.ROLL_MAX - T.TILT.ROLL_DEAD) * 0.7;
+  near(T.tiltSpeed(-lo), -T.tiltSpeed(lo));
+  assert.ok(T.tiltSpeed(lo) < T.tiltSpeed(hi));
 });
