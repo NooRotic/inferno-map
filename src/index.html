@@ -366,7 +366,8 @@ button { font: inherit; color: inherit; }
   .ctrlrow { gap: 6px; }
   .ctrlrow .btn { padding: 8px 9px; font-size: 11px; letter-spacing: .06em; min-height: 36px; }
   .ctrlrow .spacer { display: none; }
-  #btnFly { display: none; }   /* fly mode needs a keyboard */
+  #btnFly { display: none; }   /* fly mode needs a keyboard, unless the phone has motion sensors (body.motion, set by script) */
+  body.motion #btnFly { display: inline-block; }
   .readout { order: 9; margin-left: auto; }
   .ctrlrow.collapsed .readout { display: none; }   /* closed: Play, View more and Whole Earth share one row; the itinerary card above already says which canto */   /* with the toggles hidden, Play, View, the canto and Whole Earth share one row */
   /* closed: always one row; the three buttons share it, and a label drops to two lines before the row would wrap */
@@ -1555,6 +1556,7 @@ function buildUI() {
   $('#canto').addEventListener('input', (e) => { stopPlay(); setCanto(parseFloat(e.target.value), 'input'); if (innerWidth <= 900 && !S.fly) S.follow = true; });   // on touch widths, scrubbing carries the camera along like Play does
   $('#btnPlay').addEventListener('click', togglePlay);
   $('#btnFly').addEventListener('click', toggleFly);
+  if (motionAvailable()) document.body.classList.add('motion');
   $('#btnReset').addEventListener('click', () => resetView());
   $('#btnIcons').addEventListener('click', toggleIcons);
   $('#btnLinks').addEventListener('click', (e) => { S.links = !S.links; e.currentTarget.setAttribute('aria-pressed', S.links); refreshEdges(); });
@@ -1630,6 +1632,7 @@ function resetView(instant) {
 }
 function toggleFly() {
   S.fly = !S.fly; $('#btnFly').setAttribute('aria-pressed', S.fly);
+  if (S.fly && motionAvailable()) motionStart(); else motionStop();   // on a phone, Fly turns the sensors on (iOS asks permission here, inside the tap)
   if (S.fly) { cam.pos.copy(camera.position); const dir = new THREE.Vector3(); camera.getWorldDirection(dir); cam.yaw = Math.atan2(dir.z, dir.x); cam.pitch = Math.asin(Math.max(-1, Math.min(1, dir.y))); }
   else { const dir = flyDir(), d = 30; cam.g.target.copy(cam.pos).addScaledVector(dir, d); cam.target.copy(cam.g.target); cam.g.dist = cam.dist = d; cam.g.el = cam.el = -cam.pitch; cam.g.az = cam.az = Math.atan2(-dir.z, -dir.x); }
 }
@@ -1644,7 +1647,10 @@ function bindControls(c) {
   c.addEventListener('pointermove', (e) => {
     const prev = ptrs.get(e.pointerId); if (!prev) { hoverAt(e.clientX, e.clientY); return; }
     const dx = e.clientX - prev.x, dy = e.clientY - prev.y; moved += Math.abs(dx) + Math.abs(dy); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; if (pinch0) zoomBy(pinch0 / d); pinch0 = d; pan(m.x - mid0.x, m.y - mid0.y); mid0 = m; return; }
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      if (S.fly) { if (pinch0) cam.pos.addScaledVector(flyDir(), (d - pinch0) * 0.15); }   // flying: spreading two fingers moves you forward, pinching moves you back
+      else { if (pinch0) zoomBy(pinch0 / d); pan(m.x - mid0.x, m.y - mid0.y); }
+      pinch0 = d; mid0 = m; return; }
     if (S.fly) { cam.yaw += dx * 0.004; cam.pitch = Math.max(-1.5, Math.min(1.5, cam.pitch - dy * 0.004)); return; }
     S.follow = false;
     if (drag.btn === 2 || drag.btn === 1 || drag.shift) pan(dx, dy);
@@ -1678,6 +1684,65 @@ function bindControls(c) {
   addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
   addEventListener('blur', () => keys.clear());
 }
+/* tilt:begin */
+/* Motion Fly: the phone is a window. Where its back points sets where the camera looks; twisting it like a steering
+   wheel (right edge down) flies forward, left edge down flies back. Pure maths only (no DOM, no Three.js): tools/tilt.test.mjs
+   pulls this block out and runs it. Angles in radians unless a name ends in Deg. */
+const TILT = {
+  ROLL_DEAD: 0.12,   // about 7 degrees of twist does nothing, so a resting hand does not drift
+  ROLL_MAX: 0.6,     // about 34 degrees is full speed
+  SPEED: 45,         // world units per second at full twist (keyboard Fly is 30, with Shift 90)
+  LOOK_GAIN: 1,      // 1 = the view turns exactly as far as the phone does
+  PITCH_LIM: 1.5,
+};
+/* device to earth rotation for the W3C alpha/beta/gamma Euler angles (degrees); columns are the device's x, y, z axes in earth East, North, Up */
+function tiltMatrix(aDeg, bDeg, gDeg) {
+  const r = Math.PI / 180, ca = Math.cos(aDeg * r), sa = Math.sin(aDeg * r), cb = Math.cos(bDeg * r), sb = Math.sin(bDeg * r), cg = Math.cos(gDeg * r), sg = Math.sin(gDeg * r);
+  return [
+    [cg * ca - sg * sb * sa, -cb * sa, sg * ca + cg * sb * sa],
+    [cg * sa + sg * sb * ca, cb * ca, sg * sa - cg * sb * ca],
+    [-sg * cb, sb, cg * cb],
+  ];
+}
+/* where the back of the phone points (yaw and pitch, in the scene's convention: x east, y up, z south) and how far the screen is twisted
+   (roll, positive with the screen's right edge down); orientDeg is screen.orientation.angle, so a phone held on its side reads level */
+function tiltPose(R, orientDeg) {
+  const E = -R[0][2], N = -R[1][2], U = -R[2][2], h = Math.hypot(E, N), th = (orientDeg || 0) * Math.PI / 180;
+  const yaw = Math.atan2(-N, E), pitch = Math.asin(Math.max(-1, Math.min(1, U)));
+  if (h < 1e-4) return { yaw, pitch, roll: 0 };   // looking straight up or down: no compass, no roll
+  const sr = [0, 1, 2].map((i) => Math.cos(th) * R[i][0] - Math.sin(th) * R[i][1]);   // the screen's right edge, in earth coordinates
+  const rx = N / h, ry = -E / h, ux = -E * U / h, uy = -N * U / h, uz = h;               // horizontal right, and up, both square to the look direction
+  return { yaw, pitch, roll: Math.atan2(-(sr[0] * ux + sr[1] * uy + sr[2] * uz), sr[0] * rx + sr[1] * ry) };
+}
+const tiltWrap = (d) => d - 2 * Math.PI * Math.round(d / (2 * Math.PI));
+/* how far the view should turn between two readings, the short way round the compass */
+function tiltDelta(prev, cur) { return { dyaw: tiltWrap(cur.yaw - prev.yaw), dpitch: cur.pitch - prev.pitch }; }
+/* roll to forward speed, -1 to 1: a dead zone, then a smooth ramp to full at ROLL_MAX */
+function tiltSpeed(roll) {
+  const s = Math.max(0, Math.min(1, (Math.abs(roll) - TILT.ROLL_DEAD) / (TILT.ROLL_MAX - TILT.ROLL_DEAD)));
+  return Math.sign(roll) * s * s * (3 - 2 * s);
+}
+/* tilt:end */
+/* Motion Fly plumbing (touch phones only): the sensor listener feeds the pure maths above. The view is moved by the change between readings,
+   so a finger drag still adds to it and switching on starts from wherever you are already looking. */
+const MOT = { on: false, last: null, roll: 0, v: 0 };
+const motionAvailable = () => 'DeviceOrientationEvent' in window && matchMedia('(pointer: coarse)').matches;
+let motionNoteT = 0;
+function motionNote(txt, ms) { const g = $('#gesture'); g.textContent = txt; g.classList.add('on'); clearTimeout(motionNoteT); motionNoteT = setTimeout(() => g.classList.remove('on'), ms); }
+function onTilt(e) {
+  if (e.beta == null) return;   // a browser with no sensor sends one empty event
+  const p = tiltPose(tiltMatrix(e.alpha || 0, e.beta, e.gamma || 0), (screen.orientation && screen.orientation.angle) || 0);
+  if (MOT.last) { const d = tiltDelta(MOT.last, p); cam.yaw += d.dyaw * TILT.LOOK_GAIN; cam.pitch = Math.max(-TILT.PITCH_LIM, Math.min(TILT.PITCH_LIM, cam.pitch + d.dpitch * TILT.LOOK_GAIN)); }
+  MOT.last = p; MOT.roll = p.roll;
+}
+async function motionStart() {
+  try { if (typeof DeviceOrientationEvent.requestPermission === 'function' && (await DeviceOrientationEvent.requestPermission()) !== 'granted') { motionNote('Motion blocked. Drag to look instead', 3500); return; } }   // iOS 13+ only answers inside a tap
+  catch (err) { motionNote('Motion blocked. Drag to look instead', 3500); return; }
+  if (!S.fly) return;   // switched off again while the prompt was up
+  MOT.last = null; MOT.v = 0; MOT.roll = 0; MOT.on = true; addEventListener('deviceorientation', onTilt);
+  motionNote('Tilt to look. Twist to fly', 3500);
+}
+function motionStop() { MOT.on = false; MOT.v = 0; removeEventListener('deviceorientation', onTilt); }
 const ZOOM_MIN = 4;
 function zoomBy(f) {
   S.follow = false;
@@ -1706,6 +1771,7 @@ function updateCamera(dt) {
     if (keys.has('d') || keys.has('arrowright')) cam.pos.addScaledVector(r, sp);
     if (keys.has('a') || keys.has('arrowleft')) cam.pos.addScaledVector(r, -sp);
     if (keys.has('e')) cam.pos.y += sp; if (keys.has('q')) cam.pos.y -= sp;
+    if (MOT.on) { MOT.v += (tiltSpeed(MOT.roll) * TILT.SPEED - MOT.v) * k; if (Math.abs(MOT.v) > 0.01) cam.pos.addScaledVector(f, MOT.v * dt); }   // twist to fly, eased so it does not lurch
     camera.position.copy(cam.pos); camera.lookAt(cam.pos.clone().add(f)); return;
   }
   if (keys.size) {
