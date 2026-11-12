@@ -107,6 +107,9 @@ button { font: inherit; color: inherit; }
 #gesture { position: absolute; left: 50%; top: calc(112px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -6px); z-index: 12; pointer-events: none; opacity: 0; transition: opacity .15s, transform .15s;
   background: rgba(20,16,12,.82); color: var(--gold-hi); border: 1px solid var(--gold); font-family: var(--font-display); font-weight: 400; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
 #gesture.on { opacity: 1; transform: translate(-50%, 0); }
+@media (pointer: coarse) { #gesture { font-size: 16px; padding: 10px 22px; } }   /* a thumb covers a small pill, so on touch it is larger */
+#tiltHint { display: none; width: 100%; text-align: center; font-family: var(--font-display); font-size: 11px; letter-spacing: .08em; color: var(--gold-hi); opacity: .85; margin-bottom: 6px; line-height: 1.35; }
+body.tilting #tiltHint { display: block; }   /* only while motion Fly is on */
 
 /* ---------- first-visit coach marks ---------- */
 #coach { position: absolute; inset: 0; z-index: 15; pointer-events: none; }
@@ -364,7 +367,7 @@ button { font: inherit; color: inherit; }
   .tab { padding: 6px 7px; font-size: 11px; letter-spacing: .08em; }
   .bottom { padding-inline: 10px; gap: 6px; }
   .ctrlrow { gap: 6px; }
-  .ctrlrow .btn { padding: 8px 9px; font-size: 11px; letter-spacing: .06em; min-height: 36px; }
+  .ctrlrow .btn { padding: 10px 9px; font-size: 13px; letter-spacing: .06em; min-height: 46px; }   /* thumb-sized */
   .ctrlrow .spacer { display: none; }
   #btnFly { display: none; }   /* fly mode needs a keyboard, unless the phone has motion sensors (body.motion, set by script) */
   body.motion #btnFly { display: inline-block; }
@@ -431,6 +434,7 @@ button { font: inherit; color: inherit; }
   </section>
 
   <footer class="bottom">
+    <div id="tiltHint">Twist: right edge down flies forward, left edge down flies back &middot; Aim up or down to spin the Earth</div>
     <div class="ctrlrow">
       <button class="btn" id="btnPlay" aria-pressed="false"><span id="playLbl">▶ Play the journey</span> <span class="key">space</span></button>
       <button class="btn" id="btnFly" aria-pressed="false">Fly <span class="key">G</span></button>
@@ -1697,6 +1701,9 @@ const TILT = {
   SPEED: 80,         // world units per second at full twist (keyboard Fly is 30, with Shift 90)
   LOOK_GAIN: 0.6,    // 1 = the view turns exactly as far as the phone does; lower is calmer
   PITCH_LIM: 1.5,
+  SPIN_START: 0.9,   // aim the phone more than about 52 degrees above or below level and the Earth starts to turn
+  SPIN_FULL: 1.4,    // about 80 degrees (nearly straight up or down) is full turning speed
+  SPIN_RATE: 0.9,    // radians per second at full tilt
 };
 /* device to earth rotation for the W3C alpha/beta/gamma Euler angles (degrees); columns are the device's x, y, z axes in earth East, North, Up */
 function tiltMatrix(aDeg, bDeg, gDeg) {
@@ -1725,27 +1732,34 @@ function tiltSpeed(roll) {
   const s = Math.max(0, Math.min(1, (Math.abs(roll) - TILT.ROLL_DEAD) / (TILT.ROLL_MAX - TILT.ROLL_DEAD)));
   return Math.sign(roll) * s * s * (3 - 2 * s);
 }
+/* aiming the phone steeply up (+) or down (-) turns the Earth about its vertical axis: -1..1, zero until SPIN_START */
+function tiltSpin(pitch) {
+  const s = Math.max(0, Math.min(1, (Math.abs(pitch) - TILT.SPIN_START) / (TILT.SPIN_FULL - TILT.SPIN_START)));
+  return Math.sign(pitch) * s * s * (3 - 2 * s);
+}
 /* tilt:end */
 /* Motion Fly plumbing (touch phones only): the sensor listener feeds the pure maths above. The view is moved by the change between readings,
    so a finger drag still adds to it and switching on starts from wherever you are already looking. */
-const MOT = { on: false, last: null, roll: 0, v: 0 };
+const MOT = { on: false, last: null, roll: 0, v: 0, pitch: 0 };
 const motionAvailable = () => 'DeviceOrientationEvent' in window && matchMedia('(pointer: coarse)').matches;
 let motionNoteT = 0;
 function motionNote(txt, ms) { const g = $('#gesture'); g.textContent = txt; g.classList.add('on'); clearTimeout(motionNoteT); motionNoteT = setTimeout(() => g.classList.remove('on'), ms); }
 function onTilt(e) {
   if (e.beta == null) return;   // a browser with no sensor sends one empty event
   const p = tiltPose(tiltMatrix(e.alpha || 0, e.beta, e.gamma || 0), (screen.orientation && screen.orientation.angle) || 0);
-  if (MOT.last) { const d = tiltDelta(MOT.last, p); cam.yaw += d.dyaw * TILT.LOOK_GAIN; cam.pitch = Math.max(-TILT.PITCH_LIM, Math.min(TILT.PITCH_LIM, cam.pitch + d.dpitch * TILT.LOOK_GAIN)); }
+  MOT.pitch = p.pitch;
+  if (MOT.last) { const d = tiltDelta(MOT.last, p); if (Math.abs(p.pitch) < TILT.SPIN_FULL && Math.abs(MOT.last.pitch) < TILT.SPIN_FULL) cam.yaw += d.dyaw * TILT.LOOK_GAIN;   // near straight up or down the compass heading is unstable, so it is ignored there
+ cam.pitch = Math.max(-TILT.PITCH_LIM, Math.min(TILT.PITCH_LIM, cam.pitch + d.dpitch * TILT.LOOK_GAIN)); }
   MOT.last = p; MOT.roll = p.roll;
 }
 async function motionStart() {
   try { if (typeof DeviceOrientationEvent.requestPermission === 'function' && (await DeviceOrientationEvent.requestPermission()) !== 'granted') { motionNote('Motion blocked. Drag to look instead', 3500); return; } }   // iOS 13+ only answers inside a tap
   catch (err) { motionNote('Motion blocked. Drag to look instead', 3500); return; }
   if (!S.fly) return;   // switched off again while the prompt was up
-  MOT.last = null; MOT.v = 0; MOT.roll = 0; MOT.on = true; addEventListener('deviceorientation', onTilt);
+  MOT.last = null; MOT.v = 0; MOT.roll = 0; MOT.on = true; addEventListener('deviceorientation', onTilt); document.body.classList.add('tilting');
   motionNote('Tilt to look. Twist to fly', 3500);
 }
-function motionStop() { MOT.on = false; MOT.v = 0; removeEventListener('deviceorientation', onTilt); }
+function motionStop() { MOT.on = false; MOT.v = 0; removeEventListener('deviceorientation', onTilt); document.body.classList.remove('tilting'); }
 const ZOOM_MIN = 4;
 function zoomBy(f) {
   S.follow = false;
@@ -1774,7 +1788,11 @@ function updateCamera(dt) {
     if (keys.has('d') || keys.has('arrowright')) cam.pos.addScaledVector(r, sp);
     if (keys.has('a') || keys.has('arrowleft')) cam.pos.addScaledVector(r, -sp);
     if (keys.has('e')) cam.pos.y += sp; if (keys.has('q')) cam.pos.y -= sp;
-    if (MOT.on) { MOT.v += (tiltSpeed(MOT.roll) * TILT.SPEED - MOT.v) * k; if (Math.abs(MOT.v) > 0.01) cam.pos.addScaledVector(f, MOT.v * dt); }   // twist to fly, eased so it does not lurch
+    if (MOT.on) {   // aim steeply up or down to turn the Earth: orbit the camera about the funnel's vertical axis and turn the view with it
+      const phi = tiltSpin(MOT.pitch) * TILT.SPIN_RATE * dt;
+      if (phi) { const c = Math.cos(phi), s = Math.sin(phi), x = cam.pos.x, z = cam.pos.z; cam.pos.x = x * c - z * s; cam.pos.z = x * s + z * c; cam.yaw += phi; }
+    }
+    if (MOT.on) { MOT.v +=(tiltSpeed(MOT.roll) * TILT.SPEED - MOT.v) * k; if (Math.abs(MOT.v) > 0.01) cam.pos.addScaledVector(f, MOT.v * dt); }   // twist to fly, eased so it does not lurch
     camera.position.copy(cam.pos); camera.lookAt(cam.pos.clone().add(f)); return;
   }
   if (keys.size) {
