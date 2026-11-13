@@ -434,7 +434,7 @@ body.tilting #tiltHint { display: block; }   /* only while motion Fly is on */
   </section>
 
   <footer class="bottom">
-    <div id="tiltHint">Twist: right edge down flies forward, left edge down flies back &middot; Aim up or down to spin the Earth</div>
+    <div id="tiltHint">Tip past your starting angle: away flies forward, toward you flies back &middot; Twist the phone to spin the Earth</div>
     <div class="ctrlrow">
       <button class="btn" id="btnPlay" aria-pressed="false"><span id="playLbl">▶ Play the journey</span> <span class="key">space</span></button>
       <button class="btn" id="btnFly" aria-pressed="false">Fly <span class="key">G</span></button>
@@ -1692,18 +1692,20 @@ function bindControls(c) {
   addEventListener('blur', () => keys.clear());
 }
 /* tilt:begin */
-/* Motion Fly: the phone is a window. Where its back points sets where the camera looks; twisting it like a steering
-   wheel (right edge down) flies forward, left edge down flies back. Pure maths only (no DOM, no Three.js): tools/tilt.test.mjs
+/* Motion Fly: the phone is a window. Where its back points sets where the camera looks; tipping it past the angle you held
+   at the start flies along the view (top away is forward, toward you is back); twisting it like a steering wheel turns the
+   Earth (right edge down turns the view right). Pure maths only (no DOM, no Three.js): tools/tilt.test.mjs
    pulls this block out and runs it. Angles in radians unless a name ends in Deg. */
 const TILT = {
   ROLL_DEAD: 0.08,   // about 5 degrees of twist does nothing, so a resting hand does not drift
   ROLL_MAX: 0.3,     // about 17 degrees is full speed (was 34: it took nearly a quarter turn to get going)
-  SPEED: 80,         // world units per second at full twist (keyboard Fly is 30, with Shift 90)
+  SPEED: 80,         // world units per second at full tip (keyboard Fly is 30, with Shift 90)
   LOOK_GAIN: 0.6,    // 1 = the view turns exactly as far as the phone does; lower is calmer
   PITCH_LIM: 1.5,
-  SPIN_START: 0.9,   // aim the phone more than about 52 degrees above or below level and the Earth starts to turn
-  SPIN_FULL: 1.4,    // about 80 degrees (nearly straight up or down) is full turning speed
-  SPIN_RATE: 0.9,    // radians per second at full tilt
+  MOVE_DEAD: 0.3,    // tip the phone about 17 degrees from how you held it when Fly started and you begin to move
+  MOVE_MAX: 0.8,     // about 46 degrees is full speed
+  SPIN_RATE: 0.9,    // radians per second at full twist (the Earth turning)
+  YAW_LOCK: 1.4,     // aimed this steeply up or down, the compass heading is unstable and is ignored
 };
 /* device to earth rotation for the W3C alpha/beta/gamma Euler angles (degrees); columns are the device's x, y, z axes in earth East, North, Up */
 function tiltMatrix(aDeg, bDeg, gDeg) {
@@ -1732,23 +1734,24 @@ function tiltSpeed(roll) {
   const s = Math.max(0, Math.min(1, (Math.abs(roll) - TILT.ROLL_DEAD) / (TILT.ROLL_MAX - TILT.ROLL_DEAD)));
   return Math.sign(roll) * s * s * (3 - 2 * s);
 }
-/* aiming the phone steeply up (+) or down (-) turns the Earth about its vertical axis: -1..1, zero until SPIN_START */
-function tiltSpin(pitch) {
-  const s = Math.max(0, Math.min(1, (Math.abs(pitch) - TILT.SPIN_START) / (TILT.SPIN_FULL - TILT.SPIN_START)));
-  return Math.sign(pitch) * s * s * (3 - 2 * s);
+/* tipping the phone away from you (+, aiming up) or toward you (-, aiming down) from the pitch you held at the start moves you
+   forward or back along the view: -1..1, zero inside MOVE_DEAD */
+function tiltMove(pitch, neutral) {
+  const d = pitch - neutral, s = Math.max(0, Math.min(1, (Math.abs(d) - TILT.MOVE_DEAD) / (TILT.MOVE_MAX - TILT.MOVE_DEAD)));
+  return s === 0 ? 0 : Math.sign(d) * s * s * (3 - 2 * s);
 }
 /* tilt:end */
 /* Motion Fly plumbing (touch phones only): the sensor listener feeds the pure maths above. The view is moved by the change between readings,
    so a finger drag still adds to it and switching on starts from wherever you are already looking. */
-const MOT = { on: false, last: null, roll: 0, v: 0, pitch: 0 };
+const MOT = { on: false, last: null, roll: 0, v: 0, pitch: 0, neutral: 0 };
 const motionAvailable = () => 'DeviceOrientationEvent' in window && matchMedia('(pointer: coarse)').matches;
 let motionNoteT = 0;
 function motionNote(txt, ms) { const g = $('#gesture'); g.textContent = txt; g.classList.add('on'); clearTimeout(motionNoteT); motionNoteT = setTimeout(() => g.classList.remove('on'), ms); }
 function onTilt(e) {
   if (e.beta == null) return;   // a browser with no sensor sends one empty event
   const p = tiltPose(tiltMatrix(e.alpha || 0, e.beta, e.gamma || 0), (screen.orientation && screen.orientation.angle) || 0);
-  MOT.pitch = p.pitch;
-  if (MOT.last) { const d = tiltDelta(MOT.last, p); if (Math.abs(p.pitch) < TILT.SPIN_FULL && Math.abs(MOT.last.pitch) < TILT.SPIN_FULL) cam.yaw += d.dyaw * TILT.LOOK_GAIN;   // near straight up or down the compass heading is unstable, so it is ignored there
+  MOT.pitch = p.pitch; if (!MOT.last) MOT.neutral = p.pitch;   // the angle you hold when Fly starts is "stay still"
+  if (MOT.last) { const d = tiltDelta(MOT.last, p); if (Math.abs(p.pitch) < TILT.YAW_LOCK && Math.abs(MOT.last.pitch) < TILT.YAW_LOCK) cam.yaw += d.dyaw * TILT.LOOK_GAIN;   // near straight up or down the compass heading is unstable, so it is ignored there
  cam.pitch = Math.max(-TILT.PITCH_LIM, Math.min(TILT.PITCH_LIM, cam.pitch + d.dpitch * TILT.LOOK_GAIN)); }
   MOT.last = p; MOT.roll = p.roll;
 }
@@ -1757,7 +1760,7 @@ async function motionStart() {
   catch (err) { motionNote('Motion blocked. Drag to look instead', 3500); return; }
   if (!S.fly) return;   // switched off again while the prompt was up
   MOT.last = null; MOT.v = 0; MOT.roll = 0; MOT.on = true; addEventListener('deviceorientation', onTilt); document.body.classList.add('tilting');
-  motionNote('Tilt to look. Twist to fly', 3500);
+  motionNote('Tilt to look and fly. Twist to spin', 3500);
 }
 function motionStop() { MOT.on = false; MOT.v = 0; removeEventListener('deviceorientation', onTilt); document.body.classList.remove('tilting'); }
 const ZOOM_MIN = 4;
@@ -1788,11 +1791,13 @@ function updateCamera(dt) {
     if (keys.has('d') || keys.has('arrowright')) cam.pos.addScaledVector(r, sp);
     if (keys.has('a') || keys.has('arrowleft')) cam.pos.addScaledVector(r, -sp);
     if (keys.has('e')) cam.pos.y += sp; if (keys.has('q')) cam.pos.y -= sp;
-    if (MOT.on) {   // aim steeply up or down to turn the Earth: orbit the camera about the funnel's vertical axis and turn the view with it
-      const phi = tiltSpin(MOT.pitch) * TILT.SPIN_RATE * dt;
-      if (phi) { const c = Math.cos(phi), s = Math.sin(phi), x = cam.pos.x, z = cam.pos.z; cam.pos.x = x * c - z * s; cam.pos.z = x * s + z * c; cam.yaw += phi; }
+    if (MOT.on) {
+      // twist the phone to turn the Earth: orbit the camera about the funnel's vertical axis and turn the view with it
+      const phi = tiltSpeed(MOT.roll) * TILT.SPIN_RATE * dt;
+      if (phi) { const c = Math.cos(phi), s = Math.sin(phi), x = cam.pos.x, z = cam.pos.z; cam.pos.x = x * c - z * s; cam.pos.z = x * s + z * c; cam.yaw += phi; f.copy(flyDir()); }
+      // tip the phone past its starting angle to fly along the view, eased so it does not lurch
+      MOT.v += (tiltMove(MOT.pitch, MOT.neutral) * TILT.SPEED - MOT.v) * k; if (Math.abs(MOT.v) > 0.01) cam.pos.addScaledVector(f, MOT.v * dt);
     }
-    if (MOT.on) { MOT.v +=(tiltSpeed(MOT.roll) * TILT.SPEED - MOT.v) * k; if (Math.abs(MOT.v) > 0.01) cam.pos.addScaledVector(f, MOT.v * dt); }   // twist to fly, eased so it does not lurch
     camera.position.copy(cam.pos); camera.lookAt(cam.pos.clone().add(f)); return;
   }
   if (keys.size) {
