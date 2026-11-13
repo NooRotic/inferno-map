@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 // stays one self-contained file. This test pulls the block out and runs it in isolation.
 const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'index.html'), 'utf8');
 const m = /\/\* tilt:begin \*\/([\s\S]*?)\/\* tilt:end \*\//.exec(html);
-const T = m ? new Function(`${m[1]}; return { TILT, tiltMatrix, tiltPose, tiltDelta, tiltSpeed, tiltMove };`)() : null;
+const T = m ? new Function(`${m[1]}; return { TILT, tiltMatrix, tiltPose, tiltDelta, tiltSpeed, tiltMove, tiltRollGate };`)() : null;
 
 test('the tilt block exists in index.html', () => assert.ok(m, 'missing tilt:begin / tilt:end markers'));
 
@@ -77,4 +77,13 @@ test('tiltMove: tipping the phone past a dead zone from where you hold it moves 
   near(T.tiltMove(n + mx, n), 1); near(T.tiltMove(n - mx, n), -1); near(T.tiltMove(n + 3, n), 1);
   near(T.tiltMove(n - (mid - n), n), -T.tiltMove(mid, n));
   assert.ok(T.tiltMove(mid, n) < T.tiltMove(n + mx, n));
+});
+
+test('tiltRollGate: twist is trusted when the phone is near upright and fades out as it aims toward straight up or down', () => {
+  assert.equal(T.tiltRollGate(0), 1);
+  assert.equal(T.tiltRollGate(T.TILT.ROLL_FADE_START * 0.99), 1); assert.equal(T.tiltRollGate(-T.TILT.ROLL_FADE_START * 0.99), 1);
+  const mid = (T.TILT.ROLL_FADE_START + T.TILT.ROLL_FADE_END) / 2;
+  assert.ok(T.tiltRollGate(mid) > 0 && T.tiltRollGate(mid) < 1);
+  near(T.tiltRollGate(-mid), T.tiltRollGate(mid));
+  assert.equal(T.tiltRollGate(T.TILT.ROLL_FADE_END), 0); assert.equal(T.tiltRollGate(Math.PI / 2), 0);
 });
