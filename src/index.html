@@ -107,7 +107,7 @@ button { font: inherit; color: inherit; }
 #gesture { position: absolute; left: 50%; top: calc(112px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -6px); z-index: 12; pointer-events: none; opacity: 0; transition: opacity .15s, transform .15s;
   background: rgba(20,16,12,.82); color: var(--gold-hi); border: 1px solid var(--gold); font-family: var(--font-display); font-weight: 400; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
 #gesture.on { opacity: 1; transform: translate(-50%, 0); }
-@media (pointer: coarse) { #gesture { font-size: 16px; padding: 10px 22px; } }   /* a thumb covers a small pill, so on touch it is larger */
+@media (pointer: coarse) { #gesture { font-size: 16px; padding: 10px 22px; white-space: normal; text-align: center; width: max-content; max-width: calc(100vw - 32px); } }   /* a thumb covers a small pill, so on touch it is larger */
 #tiltHint { display: none; width: 100%; text-align: center; font-family: var(--font-display); font-size: 11px; letter-spacing: .08em; color: var(--gold-hi); opacity: .85; margin-bottom: 6px; line-height: 1.35; }
 body.tilting #tiltHint { display: block; }   /* only while motion Fly is on */
 
@@ -1653,8 +1653,9 @@ function bindControls(c) {
     const dx = e.clientX - prev.x, dy = e.clientY - prev.y; moved += Math.abs(dx) + Math.abs(dy); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       if (S.fly) {   // flying: spreading two fingers moves you forward, pinching moves you back; dragging both fingers strafes (sideways, up and down)
-        if (pinch0) cam.pos.addScaledVector(flyDir(), (d - pinch0) * 0.15);
-        if (mid0) { cam.pos.addScaledVector(V(-Math.sin(cam.yaw), 0, Math.cos(cam.yaw)), -(m.x - mid0.x) * 0.12); cam.pos.y += (m.y - mid0.y) * 0.12; }
+        const step = Math.max(0.4, cam.pos.distanceTo(cam.g.target) * 0.006);   // proportional to how far out you are, like the normal pinch zoom, so it is quick from afar and fine up close
+        if (pinch0) cam.pos.addScaledVector(flyDir(), (d - pinch0) * step);
+        if (mid0) { cam.pos.addScaledVector(V(-Math.sin(cam.yaw), 0, Math.cos(cam.yaw)), -(m.x - mid0.x) * step * 0.5); cam.pos.y += (m.y - mid0.y) * step * 0.5; }
       }
       else { if (pinch0) zoomBy(pinch0 / d); pan(m.x - mid0.x, m.y - mid0.y); }
       pinch0 = d; mid0 = m; return; }
@@ -1751,7 +1752,7 @@ function tiltMove(pitch, neutral) {
 /* Motion Fly plumbing (touch phones only): the sensor listener feeds the pure maths above. The view is moved by the change between readings,
    so a finger drag still adds to it and switching on starts from wherever you are already looking. */
 const MOT = { on: false, last: null, roll: 0, v: 0, pitch: 0, neutral: 0 };
-const TILT_DEBUG = /[?&]tiltdebug/.test(location.search);   // add ?tiltdebug to the URL to show the live sensor numbers in place of the hint line
+const TILT_DEBUG = (() => { try { return /tiltdebug/i.test(decodeURIComponent(location.search + location.hash)); } catch (e) { return /tiltdebug/i.test(location.search + location.hash); } })();   // add ?tiltdebug to the URL to show the live sensor numbers in place of the hint line
 const motionAvailable = () => 'DeviceOrientationEvent' in window && matchMedia('(pointer: coarse)').matches;
 let motionNoteT = 0;
 function motionNote(txt, ms) { const g = $('#gesture'); g.textContent = txt; g.classList.add('on'); clearTimeout(motionNoteT); motionNoteT = setTimeout(() => g.classList.remove('on'), ms); }
