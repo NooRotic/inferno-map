@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 // stays one self-contained file. This test pulls the block out and runs it in isolation.
 const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'index.html'), 'utf8');
 const m = /\/\* tilt:begin \*\/([\s\S]*?)\/\* tilt:end \*\//.exec(html);
-const T = m ? new Function(`${m[1]}; return { TILT, tiltMatrix, tiltPose, tiltDelta, tiltSpeed, tiltSpin };`)() : null;
+const T = m ? new Function(`${m[1]}; return { TILT, tiltMatrix, tiltPose, tiltDelta, tiltSpeed, tiltMove };`)() : null;
 
 test('the tilt block exists in index.html', () => assert.ok(m, 'missing tilt:begin / tilt:end markers'));
 
@@ -68,12 +68,13 @@ test('tiltSpeed: a dead zone, then a smooth ramp, full at the limit, symmetric',
   assert.ok(T.tiltSpeed(lo) < T.tiltSpeed(hi));
 });
 
-test('tiltSpin: aiming steeply up or down spins the Earth, level or gently tilted does not', () => {
-  assert.equal(T.tiltSpin(0), 0);
-  assert.equal(T.tiltSpin(T.TILT.SPIN_START * 0.99), 0);
-  const mid = (T.TILT.SPIN_START + T.TILT.SPIN_FULL) / 2;
-  assert.ok(T.tiltSpin(mid) > 0 && T.tiltSpin(mid) < 1);
-  near(T.tiltSpin(T.TILT.SPIN_FULL), 1); near(T.tiltSpin(Math.PI / 2), 1);
-  near(T.tiltSpin(-mid), -T.tiltSpin(mid)); near(T.tiltSpin(-Math.PI / 2), -1);
-  assert.ok(T.tiltSpin(mid) < T.tiltSpin(T.TILT.SPIN_FULL));
+test('tiltMove: tipping the phone past a dead zone from where you hold it moves you, away is forward, toward you is back', () => {
+  const n = 1.0, d = T.TILT.MOVE_DEAD, mx = T.TILT.MOVE_MAX;
+  assert.equal(T.tiltMove(n, n), 0);
+  assert.equal(T.tiltMove(n + d * 0.99, n), 0); assert.equal(T.tiltMove(n - d * 0.99, n), 0);
+  const mid = n + (d + mx) / 2;
+  assert.ok(T.tiltMove(mid, n) > 0 && T.tiltMove(mid, n) < 1);
+  near(T.tiltMove(n + mx, n), 1); near(T.tiltMove(n - mx, n), -1); near(T.tiltMove(n + 3, n), 1);
+  near(T.tiltMove(n - (mid - n), n), -T.tiltMove(mid, n));
+  assert.ok(T.tiltMove(mid, n) < T.tiltMove(n + mx, n));
 });
