@@ -68,15 +68,15 @@ test('tiltSpeed: a dead zone, then a smooth ramp, full at the limit, symmetric',
   assert.ok(T.tiltSpeed(lo) < T.tiltSpeed(hi));
 });
 
-test('tiltMove: tipping the phone past a dead zone from where you hold it moves you, away is forward, toward you is back', () => {
+test('tiltMove: tipping the phone past a dead zone from where you hold it moves you, toward you is forward (+), away is back (-)', () => {
   const n = 1.0, d = T.TILT.MOVE_DEAD, mx = T.TILT.MOVE_MAX;
   assert.equal(T.tiltMove(n, n), 0);
   assert.equal(T.tiltMove(n + d * 0.99, n), 0); assert.equal(T.tiltMove(n - d * 0.99, n), 0);
   const mid = n + (d + mx) / 2;
-  assert.ok(T.tiltMove(mid, n) > 0 && T.tiltMove(mid, n) < 1);
-  near(T.tiltMove(n + mx, n), 1); near(T.tiltMove(n - mx, n), -1); near(T.tiltMove(n + 3, n), 1);
+  assert.ok(T.tiltMove(mid, n) < 0 && T.tiltMove(mid, n) > -1);
+  near(T.tiltMove(n + mx, n), -1); near(T.tiltMove(n - mx, n), 1); near(T.tiltMove(n + 3, n), -1);
   near(T.tiltMove(n - (mid - n), n), -T.tiltMove(mid, n));
-  assert.ok(T.tiltMove(mid, n) < T.tiltMove(n + mx, n));
+  assert.ok(T.tiltMove(mid, n) > T.tiltMove(n + mx, n));
 });
 
 test('tiltRollGate: twist is trusted when the phone is near upright and fades out as it aims toward straight up or down', () => {

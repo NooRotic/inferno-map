@@ -434,7 +434,7 @@ body.tilting #tiltHint { display: block; }   /* only while motion Fly is on */
   </section>
 
   <footer class="bottom">
-    <div id="tiltHint">Tip past your starting angle: away flies forward, toward you flies back &middot; Twist the phone to spin the Earth</div>
+    <div id="tiltHint">Tip past your starting angle: toward you flies forward, away flies back &middot; Twist the phone to spin the Earth</div>
     <div class="ctrlrow">
       <button class="btn" id="btnPlay" aria-pressed="false"><span id="playLbl">▶ Play the journey</span> <span class="key">space</span></button>
       <button class="btn" id="btnFly" aria-pressed="false">Fly <span class="key">G</span></button>
@@ -1694,7 +1694,7 @@ function bindControls(c) {
 }
 /* tilt:begin */
 /* Motion Fly: the phone is a window. Where its back points sets where the camera looks; tipping it past the angle you held
-   at the start flies along the view (top away is forward, toward you is back); twisting it like a steering wheel turns the
+   at the start flies along the view (top toward you is forward, away is back); twisting it like a steering wheel turns the
    Earth (right edge down turns the view right). Pure maths only (no DOM, no Three.js): tools/tilt.test.mjs
    pulls this block out and runs it. Angles in radians unless a name ends in Deg. */
 const TILT = {
@@ -1737,7 +1737,7 @@ function tiltSpeed(roll) {
   const s = Math.max(0, Math.min(1, (Math.abs(roll) - TILT.ROLL_DEAD) / (TILT.ROLL_MAX - TILT.ROLL_DEAD)));
   return Math.sign(roll) * s * s * (3 - 2 * s);
 }
-/* tipping the phone away from you (+, aiming up) or toward you (-, aiming down) from the pitch you held at the start moves you
+/* tipping the phone toward you (forward) or away from you (back) from the pitch you held at the start moves you
    forward or back along the view: -1..1, zero inside MOVE_DEAD */
 /* 1 while the phone is near upright, fading to 0 as it aims toward straight up or down, where "twist" is just heading noise */
 function tiltRollGate(pitch) {
@@ -1746,7 +1746,7 @@ function tiltRollGate(pitch) {
 }
 function tiltMove(pitch, neutral) {
   const d = pitch - neutral, s = Math.max(0, Math.min(1, (Math.abs(d) - TILT.MOVE_DEAD) / (TILT.MOVE_MAX - TILT.MOVE_DEAD)));
-  return s === 0 ? 0 : Math.sign(d) * s * s * (3 - 2 * s);
+  return s === 0 ? 0 : -Math.sign(d) * s * s * (3 - 2 * s);   // flipped after the phone test: pitch above neutral (top tipped away) is now -1, below it +1
 }
 /* tilt:end */
 /* Motion Fly plumbing (touch phones only): the sensor listener feeds the pure maths above. The view is moved by the change between readings,
