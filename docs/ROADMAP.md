@@ -66,7 +66,7 @@ To see them: they are skipped when the OS asks for reduced motion, so add `?moti
 
 ## 2. Rollover "torment cards"
 
-**Status (October 2026):** the card is built as a strip under the header. Rolling over an icon or level label shows its name, sin, a line of description and the citation (touch screens skip it, since tapping already opens the side panel). What is left is the data below: once a node has `torment` and `contrapasso`, the strip should show them in place of the trimmed `note`.
+**Status (November 2026):** built. All 69 souls and 19 other points (the punishment places, the giants, Lucifer, Cacus, Boniface) carry `torment` and `contrapasso` with `cpconf`; the hover strip shows them in place of the trimmed `note`, and the card shows both in full. Every quote in them is checked against Longfellow (`tools/longfellow.mjs`). `who` and `deed` were not added.
 
 Hovering a soul or area shows a compact card. Proposed new fields in `inferno.json` nodes:
 

@@ -61,11 +61,11 @@ Status of every quoted line ("source" = matched against a published text; "memor
 
 | node | cite | Italian | Longfellow |
 |---|---|---|---|
-| `dark_wood` | I.1-3 | memory | memory |
+| `dark_wood` | I.1-3 | memory | source |
 | `virgil` | I.61-63 | memory | — |
-| `gate` | III.1-9 | source | memory |
+| `gate` | III.1-9 | source | source |
 | `charon` | III.82-111 | source | — |
-| `limbo_sighs` | IV.25-42 | memory | memory |
+| `limbo_sighs` | IV.25-42 | memory | source |
 | `poets` | IV.85-102 | memory | source |
 | `aristotle` | IV.130-144 | memory | — |
 | `minos` | V.4-15 | memory | — |
@@ -80,7 +80,7 @@ Status of every quoted line ("source" = matched against a published text; "memor
 | `capaneus` | XIV.43-72 | memory | source |
 | `brunetto` | XV.22-124 | memory | source |
 | `geryon` | XVII.1-27 | memory | source |
-| `malebolge` | XVIII.1-18 | memory | memory |
+| `malebolge` | XVIII.1-18 | memory | source |
 | `nicholas` | XIX.31-120 | memory | source |
 | `ulysses` | XXVI.52-142 | memory | source |
 | `bertran` | XXVIII.112-142 | memory | source |
@@ -90,7 +90,13 @@ Status of every quoted line ("source" = matched against a published text; "memor
 | `center` | XXXIV.76-111 | source | — |
 | `stars` | XXXIV.127-139 | source | source |
 
-Also checked from knowledge, no page reachable at the time: XXIX.9, XXX.86-87, XXXI.58-59, IV.39, VIII.124-126, XXI.112-114, XXV.13-15, XXVII.124-127, XVIII.21, XVII.31 (Longfellow wording confirmed, line number not).
 Confirmed against a source: IX.132, III.136, V.107, V.142, XXXIII.137.
+Confirmed against Gutenberg #1001 on 2026-11-14 (wording and line number): XXIX.9, XXX.86-87, XXXI.58-59, IV.39, VIII.124-126, XXI.112-114, XXV.13-15, XXVII.124-127, XVIII.21, XVII.31. These were the ten line numbers left open.
 
-**To do**: confirm every "memory" row against Digital Dante or Gutenberg #1001. Recheck `limbo_sighs` (IV.41-42), which was added after the check.
+### Longfellow check (2026-11-14)
+
+`node tools/longfellow.mjs fetch` saves Gutenberg #1001 to `.cache/` (gitignored). Longfellow translated line for line, and every one of the 34 cantos has the same line count as the Italian, so his line numbers are Dante's. `node tools/longfellow.mjs check` (also run by `tools/torment.test.mjs` when the text is present) then checks that every `en` line sits inside its node's citation and that every phrase in curly quotes in a note, caption, torment, contrapasso, level `pun` or scene note is Longfellow's wording. `node tools/longfellow.mjs XXVIII 139-142` prints lines by number.
+
+First run: every `en` line passed, which settles the Longfellow column above. Fourteen phrases in notes were in quotation marks without being Longfellow's words (paraphrases, or glosses of names such as "Hog" and "Evil Claws"). Each now uses Longfellow's wording, or the gloss lost its quotation marks.
+
+**To do**: the Italian column. Every "memory" row there still needs matching against Digital Dante or another line-numbered Italian text.
