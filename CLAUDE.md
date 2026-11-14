@@ -42,7 +42,7 @@ The page `fetch()`es its JSON, so `file://` does not work; always serve over HTT
 
 - Citations are canto + line. `docs/RESEARCH.md` is the verification log. Every English quote is checked against Longfellow by `node tools/longfellow.mjs check` (and by the tests once the text is fetched); the Italian is still partly unverified. Do not "fix" a quote or line number from memory; verify it against Longfellow (Project Gutenberg #1001) or leave it flagged. Anything in curly quotes in a note, caption, torment or contrapasso counts as a quote, so a gloss or paraphrase goes without quotation marks.
 - English quotes are Longfellow 1867 only (public domain). Do not add quotes from modern translations (Ciardi, Mandelbaum, Pinsky, etc.).
-- Keep the `conf` field honest: `text` for what Dante states, `interp` for interpretation. Contrapasso is mostly interpretation: `cpconf` is `text` only where the poem itself says why the punishment fits (Bertran de Born, Capaneus, Amphiaraus, Nicholas III's pun, the sowers of discord, Ephialtes, Nimrod, the sullen, the suicides, the barrators), otherwise `interp`. Describe torments plainly, as the poem states them.
+- Keep the `conf` field honest: `text` for what Dante states, `interp` for interpretation. Contrapasso is mostly interpretation: `cpconf` is `text` only where the poem itself says why the punishment fits (Bertran de Born, Capaneus, Amphiaraus, Nicholas III's pun, the sowers of discord, Ephialtes, Nimrod, the sullen, the suicides, the barrators, Cacus, the hoarding clergy), otherwise `interp`. Describe torments plainly, as the poem states them.
 
 ## Planned work
 
