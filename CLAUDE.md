@@ -8,7 +8,7 @@ INFERNVS: a static, no-framework 3D cutaway of Dante's *Inferno* (Three.js r128)
 
 ## Commands
 
-No tests, linter or dependencies; Node is only used for the build script.
+No linter or dependencies; Node runs the build script and the tests.
 
 ```bash
 npm run dev            # build dist/ and serve at http://localhost:5173
@@ -16,6 +16,9 @@ npm run build          # dist/ with Three.js loaded from cdnjs
 npm run build:vendor   # dist/ with Three.js copied to dist/vendor/ (use this for deploys)
 python tools/make-favicon.py   # regenerate the favicon files in src/ from Lucifer's red pixel face (needs Pillow)
 node --test tools/*.test.mjs   # unit tests for merge-modern and the build flags (use the glob; a bare directory fails on Node 24)
+node tools/longfellow.mjs fetch    # once: save Longfellow (Gutenberg #1001) to .cache/ so the quote tests run instead of skipping
+node tools/longfellow.mjs check    # every English quote in inferno.json is Longfellow's and every en line sits in its cite
+node tools/longfellow.mjs XXVIII 139-142   # print lines by number (line numbers match the Italian: all 34 canto lengths agree)
 node tools/build.mjs --data <dir> [--site <url>] [--title <text>] [--desc <text>]   # merge a modern data folder; no flags = the book edition, byte-identical
 ```
 
@@ -25,7 +28,7 @@ The page `fetch()`es its JSON, so `file://` does not work; always serve over HTT
 
 - **`src/index.html` is a fragment** ("artifact form": no `<html>`/`<head>`). `tools/build.mjs` wraps it in a doctype/head, hoists its `<title>`, optionally rewrites the cdnjs script URL (the string match is exact, so keep that `<script src>` unchanged), and copies the two JSON files beside it. Edit `src/`, never `dist/`.
 - **It is one ~1,150-line file with two `<script>` blocks**: a sprite engine (`buildPix`, turns `sprites.json` into a single canvas texture atlas) and a map engine (one IIFE: `buildEarth`, `buildLevels`, `buildLandmarks`, `buildPath`, `buildMarkers`, plus state in `setCanto`/`selectNode`/`selectLevel`). Markers are one `THREE.Points` draw call whose shader samples the sprite atlas.
-- **Data drives everything** (`src/inferno.json`: `meta`, `levels`, `path`, `nodes`, `edges`; `src/sprites.json`: `palette`, `base`, `mods`, `templates`, `sprites`, `kindDefaults`). Nodes reference levels by `lv` and sprites by `icon`; edges can end on a node id or a level id.
+- **Data drives everything** (`src/inferno.json`: `meta`, `levels`, `path`, `nodes`, `edges`; `src/sprites.json`: `palette`, `base`, `mods`, `templates`, `sprites`, `kindDefaults`). Nodes reference levels by `lv` and sprites by `icon`; edges can end on a node id or a level id. A book node may carry `torment` (the punishment as the poem states it) and `contrapasso` (why it fits the sin) with `cpconf`: the hover strip shows them in place of the trimmed `note`, and the card shows both in full under Poena and Contrapasso. Every soul must have them (`tools/torment.test.mjs`); guardians, places and events get them only where the poem shows a punishment (the giants, Lucifer, the storm, the pitch).
 - **Tableaux** (`inferno.json` `tableaux`) are animated scenes tied to a level: `{ id, lv, sprite, how, node, count, lane, speed, size, hover, cite, conf, note }`, where `how` is `march` (with `backwards`), `bob`, `fall`, `flicker`, `flow` (floor scroll, no sprite), `push` (two groups with a `weight`, optional `clash` sparks), `cascade` (a falling ribbon with mist) or `track` (follows `keys` as the journey moves). `hover` lifts the figures off the floor (souls on the wind). The header comment above `buildTableaux` in `src/index.html` documents each. `node` names an existing node: hovering or tapping a figure in the scene selects it, so its card explains the sin and punishment (a scene with no `node` opens its level's card instead). `conf` follows the same rule as nodes; movement is staging, so say so in `note`. The footer Motion button turns them (and the particles) on and off and remembers the choice; it starts off when the OS asks for reduced motion. Add `?motion` to the URL to force it on.
 - **Modern layer (optional)**: `tools/merge-modern.mjs` merges an external data folder (nodes with `k: event | pattern`, sources, sprites, coverage, and an optional `legend` list of `{ icon, label }` shown as an icon key in the Clavis) over the book data at build time. Modern nodes render with their own kinds and a Now toggle, and are absent when no data is merged. This repo holds no modern content; the fixtures under `tools/fixtures/` are fake and labelled TEST.
 - **Journey captions**: while the journey plays, the pilgrim slows into each guardian, place and event (or, when the modern layer is merged, only each modern point, to keep the run short), holds while a credit-style caption fades in (`#jcap`), then eases on. The logic is a pure block between `/* journey:begin */` and `/* journey:end */` in `src/index.html` (tested by `tools/journey.test.mjs`, which extracts that block); keep it free of DOM and Three.js. The caption shows the node's `n`, a subtitle from its optional `cap` (else `note`, trimmed to a sentence), and the circle's optional `pun` line from `inferno.json` `levels`. A node's stop is where the pilgrim passes closest to it after it unlocks. The footer Captions button turns it off and remembers the choice. Souls get no stop.
@@ -37,9 +40,9 @@ The page `fetch()`es its JSON, so `file://` does not work; always serve over HTT
 
 ## Content rules (these matter more than code style)
 
-- Citations are canto + line. `docs/RESEARCH.md` is the verification log; about ten line numbers are still unconfirmed (listed near its end). Do not "fix" a quote or line number from memory; verify it against Longfellow (Project Gutenberg #1001) or leave it flagged.
+- Citations are canto + line. `docs/RESEARCH.md` is the verification log. Every English quote is checked against Longfellow by `node tools/longfellow.mjs check` (and by the tests once the text is fetched); the Italian is still partly unverified. Do not "fix" a quote or line number from memory; verify it against Longfellow (Project Gutenberg #1001) or leave it flagged. Anything in curly quotes in a note, caption, torment or contrapasso counts as a quote, so a gloss or paraphrase goes without quotation marks.
 - English quotes are Longfellow 1867 only (public domain). Do not add quotes from modern translations (Ciardi, Mandelbaum, Pinsky, etc.).
-- Keep the `conf` field honest: `text` for what Dante states, `interp` for interpretation.
+- Keep the `conf` field honest: `text` for what Dante states, `interp` for interpretation. Contrapasso is mostly interpretation: `cpconf` is `text` only where the poem itself says why the punishment fits (Bertran de Born, Capaneus, Amphiaraus, Nicholas III's pun, the sowers of discord, Ephialtes, Nimrod, the sullen, the suicides, the barrators), otherwise `interp`. Describe torments plainly, as the poem states them.
 
 ## Planned work
 
