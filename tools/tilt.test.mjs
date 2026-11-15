@@ -69,10 +69,10 @@ test('tiltSpeed: a dead zone, then a smooth ramp, full at the limit, symmetric',
 });
 
 test('tiltMove: tipping the phone past a dead zone from where you hold it moves you, toward you is forward (+), away is back (-)', () => {
-  const n = 1.0, d = T.TILT.MOVE_DEAD, fw = T.TILT.MOVE_MAX, bk = T.TILT.MOVE_MAX_BACK;
+  const n = 1.0, df = T.TILT.MOVE_DEAD, db = T.TILT.MOVE_DEAD_BACK, fw = T.TILT.MOVE_MAX, bk = T.TILT.MOVE_MAX_BACK;
   assert.equal(T.tiltMove(n, n), 0);
-  assert.equal(T.tiltMove(n + d * 0.99, n), 0); assert.equal(T.tiltMove(n - d * 0.99, n), 0);
-  const midF = n - (d + fw) / 2, midB = n + (d + bk) / 2;
+  assert.equal(T.tiltMove(n - df * 0.99, n), 0); assert.equal(T.tiltMove(n + db * 0.99, n), 0);
+  const midF = n - (df + fw) / 2, midB = n + (db + bk) / 2;
   assert.ok(T.tiltMove(midF, n) > 0 && T.tiltMove(midF, n) < 1);
   assert.ok(T.tiltMove(midB, n) < 0 && T.tiltMove(midB, n) > -1);
   near(T.tiltMove(n - fw, n), 1); near(T.tiltMove(n + bk, n), -1); near(T.tiltMove(n - 3, n), 1); near(T.tiltMove(n + 3, n), -1);
@@ -80,36 +80,40 @@ test('tiltMove: tipping the phone past a dead zone from where you hold it moves 
   assert.ok(T.tiltMove(n - fw * 0.9, n) < T.tiltMove(n - fw, n));
 });
 
-test('tiltMove: the wrist tips back less far than forward, so back reaches full speed sooner', () => {
-  assert.ok(T.TILT.MOVE_MAX_BACK < T.TILT.MOVE_MAX);
-  const a = (T.TILT.MOVE_DEAD + T.TILT.MOVE_MAX_BACK) / 2;
-  assert.ok(-T.tiltMove(1 + a, 1) > T.tiltMove(1 - a, 1));
+test('tiltMove: back needs a bigger tip to start than forward (a back tip was too touchy)', () => {
+  assert.ok(T.TILT.MOVE_DEAD_BACK > T.TILT.MOVE_DEAD);
+  const a = (T.TILT.MOVE_DEAD + T.TILT.MOVE_DEAD_BACK) / 2;
+  assert.ok(T.tiltMove(1 - a, 1) > 0); assert.equal(T.tiltMove(1 + a, 1), 0);
 });
 
-// From the owner's phone recording (2026-11-14, ?tiltdebug): held tips were -12 to -17 degrees forward and +9 to +13 back,
-// and gave almost no speed; a resting hand wandered within about 6 degrees of the start.
+// From the owner's phone tests (2026-11-14 and 15, ?tiltdebug): held tips were -12 to -17 degrees forward and +9 to +17 back.
+// After the first retune forward still started too late, and back was too touchy.
 const deg = (x) => x * Math.PI / 180;
-test('tiltMove: the tips the owner can hold while still seeing the screen move them clearly; a resting hand does not', () => {
-  assert.equal(T.tiltMove(deg(-6), 0), 0); assert.equal(T.tiltMove(deg(6), 0), 0);
-  assert.ok(T.tiltMove(deg(-12), 0) > 0.4, 'forward at 12 degrees');
-  assert.ok(T.tiltMove(deg(-16), 0) > 0.95, 'forward at 16 degrees is (nearly) full');
-  assert.ok(T.tiltMove(deg(10), 0) < -0.4, 'back at 10 degrees');
-  assert.ok(T.tiltMove(deg(12), 0) < -0.95, 'back at 12 degrees is (nearly) full');
+test('tiltMove: forward starts sooner, back waits longer, and both reach full speed within a held tip', () => {
+  assert.equal(T.tiltMove(deg(-4), 0), 0, 'a resting hand forward');
+  assert.ok(T.tiltMove(deg(-8), 0) > 0.15, 'forward is moving by 8 degrees');
+  assert.ok(T.tiltMove(deg(-10), 0) > 0.45, 'forward at 10 degrees');
+  assert.ok(T.tiltMove(deg(-14), 0) > 0.95, 'forward at 14 degrees is (nearly) full');
+  assert.equal(T.tiltMove(deg(9), 0), 0, 'back at 9 degrees does nothing');
+  assert.ok(T.tiltMove(deg(13), 0) < -0.4, 'back at 13 degrees');
+  assert.ok(T.tiltMove(deg(16), 0) < -0.95, 'back at 16 degrees is (nearly) full');
 });
 
-test('tiltLookPitch: the view follows the phone only within LOOK_HOLD of the start angle, then holds', () => {
-  const n = -0.7, h = T.TILT.LOOK_HOLD;
+test('tiltLookPitch: the view follows the phone only until movement starts in that direction, then holds', () => {
+  const n = -0.7, df = T.TILT.MOVE_DEAD, db = T.TILT.MOVE_DEAD_BACK;
   near(T.tiltLookPitch(n, n), n);
-  near(T.tiltLookPitch(n + h * 0.5, n), n + h * 0.5); near(T.tiltLookPitch(n - h * 0.5, n), n - h * 0.5);
-  near(T.tiltLookPitch(n + 1, n), n + h); near(T.tiltLookPitch(n - 1, n), n - h);
-  // tipping further past the hold does not move the view at all
-  near(T.tiltLookPitch(n - h - 0.2, n) - T.tiltLookPitch(n - h - 0.1, n), 0);
-  assert.equal(T.tiltHeld(n + h * 0.9, n), false); assert.equal(T.tiltHeld(n - h * 1.1, n), true); assert.equal(T.tiltHeld(n + h * 1.1, n), true);
+  near(T.tiltLookPitch(n - df * 0.5, n), n - df * 0.5); near(T.tiltLookPitch(n + db * 0.5, n), n + db * 0.5);
+  near(T.tiltLookPitch(n - 1, n), n - df); near(T.tiltLookPitch(n + 1, n), n + db);
+  // tipping further does not move the view at all
+  near(T.tiltLookPitch(n - df - 0.2, n) - T.tiltLookPitch(n - df - 0.1, n), 0);
+  assert.equal(T.tiltHeld(n - df * 0.9, n), false); assert.equal(T.tiltHeld(n - df * 1.1, n), true);
+  assert.equal(T.tiltHeld(n + db * 0.9, n), false); assert.equal(T.tiltHeld(n + db * 1.1, n), true);
+  // so wherever the phone moves you, the view is held
+  for (const t of [-0.3, -0.2, -df * 1.01, db * 1.01, 0.3]) if (T.tiltMove(n + t, n) !== 0) assert.ok(T.tiltHeld(n + t, n), `moving but not held at ${t}`);
 });
 
-test('the view holds before full speed, and movement starts before the view holds', () => {
-  assert.ok(T.TILT.MOVE_DEAD < T.TILT.LOOK_HOLD);
-  assert.ok(T.TILT.LOOK_HOLD < T.TILT.MOVE_MAX_BACK);
+test('tipping up and down turns the view less than turning around does (it felt like tipping the phone)', () => {
+  assert.ok(T.TILT.LOOK_PITCH_GAIN < T.TILT.LOOK_GAIN);
 });
 
 test('tiltRollGate: twist is trusted when the phone is near upright and fades out as it aims toward straight up or down', () => {
