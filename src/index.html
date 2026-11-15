@@ -1713,13 +1713,15 @@ const TILT = {
   ROLL_MAX: 0.3,     // about 17 degrees is full speed (was 34: it took nearly a quarter turn to get going)
   SPEED: 100,        // world units per second at full tip (keyboard Fly is 30, with Shift 90)
   LOOK_GAIN: 0.6,    // 1 = the view turns exactly as far as the phone does; lower is calmer
+  LOOK_PITCH_GAIN: 0.3,   // tipping up and down turns the view less than turning around does (at 0.6 it felt like tipping the phone)
   PITCH_LIM: 1.5,
-  // Tip ranges come from the owner's phone recording (2026-11-14): a hand can hold about 16 degrees toward itself and
-  // 12 away and still see the screen; at rest it wanders within about 6. The old ramp (11 to 34 degrees) barely moved.
-  MOVE_DEAD: 0.12,   // tip the phone about 7 degrees from how you held it when Fly started and you begin to move
-  MOVE_MAX: 0.28,    // about 16 degrees toward you is full speed forward
-  MOVE_MAX_BACK: 0.21,   // about 12 degrees away is full speed back (the wrist does not bend back as far)
-  LOOK_HOLD: 0.17,   // past about 10 degrees of tip the view stops following the phone, so tipping to fly holds the picture still
+  // Tip ranges come from the owner's phone tests (2026-11-14 and 15, ?tiltdebug): a hand holds about 14 to 17 degrees toward
+  // itself and 13 to 17 away while still seeing the screen. Forward should start early; back was too touchy, so it waits longer.
+  // The view follows the phone's tip only until you start moving in that direction, then holds still.
+  MOVE_DEAD: 0.087,  // tip the top toward you about 5 degrees from how you held it when Fly started and you begin to fly forward
+  MOVE_MAX: 0.244,   // about 14 degrees toward you is full speed forward
+  MOVE_DEAD_BACK: 0.17,   // tip it away about 10 degrees before you fly back
+  MOVE_MAX_BACK: 0.28,    // about 16 degrees away is full speed back
   ROLL_FADE_START: 0.9,   // aimed more than about 52 degrees up or down, the twist reading gets unreliable (the heading it is measured against is undefined at straight up or down)
   ROLL_FADE_END: 1.3,     // about 74 degrees: twist is ignored
   SPIN_RATE: 0.9,    // radians per second at full twist (the Earth turning)
@@ -1760,14 +1762,14 @@ function tiltRollGate(pitch) {
   return 1 - s * s * (3 - 2 * s);
 }
 function tiltMove(pitch, neutral) {
-  const d = pitch - neutral, max = d < 0 ? TILT.MOVE_MAX : TILT.MOVE_MAX_BACK;
-  const s = Math.max(0, Math.min(1, (Math.abs(d) - TILT.MOVE_DEAD) / (max - TILT.MOVE_DEAD)));
+  const d = pitch - neutral, back = d > 0, dead = back ? TILT.MOVE_DEAD_BACK : TILT.MOVE_DEAD, max = back ? TILT.MOVE_MAX_BACK : TILT.MOVE_MAX;
+  const s = Math.max(0, Math.min(1, (Math.abs(d) - dead) / (max - dead)));
   return s === 0 ? 0 : -Math.sign(d) * s * s * (3 - 2 * s);   // flipped after the phone test: pitch above neutral (top tipped away) is now -1, below it +1
 }
-/* the pitch the view follows: the phone's own pitch while it is within LOOK_HOLD of the start angle, and the edge of
-   that band beyond it, so the view holds still while you tip hard to fly and picks up again from the edge (no jump) */
-function tiltLookPitch(pitch, neutral) { return neutral + Math.max(-TILT.LOOK_HOLD, Math.min(TILT.LOOK_HOLD, pitch - neutral)); }
-const tiltHeld = (pitch, neutral) => Math.abs(pitch - neutral) > TILT.LOOK_HOLD;
+/* the pitch the view follows: the phone's own pitch until you tip far enough to move (each direction's dead zone), and
+   the edge of that band beyond it, so the view holds still while you fly and picks up again from the edge (no jump) */
+function tiltLookPitch(pitch, neutral) { return neutral + Math.max(-TILT.MOVE_DEAD, Math.min(TILT.MOVE_DEAD_BACK, pitch - neutral)); }
+const tiltHeld = (pitch, neutral) => pitch - neutral < -TILT.MOVE_DEAD || pitch - neutral > TILT.MOVE_DEAD_BACK;
 /* tilt:end */
 /* Motion Fly plumbing (touch phones only): the sensor listener feeds the pure maths above. The view is moved by the change between readings,
    so a finger drag still adds to it and switching on starts from wherever you are already looking. */
@@ -1781,9 +1783,9 @@ function onTilt(e) {
   const p = tiltPose(tiltMatrix(e.alpha || 0, e.beta, e.gamma || 0), (screen.orientation && screen.orientation.angle) || 0);
   MOT.pitch = p.pitch; if (!MOT.last) MOT.neutral = p.pitch;   // the angle you hold when Fly starts is "stay still"
   if (MOT.last) {
-    const d = tiltDelta(MOT.last, p), held = tiltHeld(p.pitch, MOT.neutral) || tiltHeld(MOT.last.pitch, MOT.neutral);   // tipped past LOOK_HOLD: the view holds still and the tip only sets the speed
+    const d = tiltDelta(MOT.last, p), held = tiltHeld(p.pitch, MOT.neutral) || tiltHeld(MOT.last.pitch, MOT.neutral);   // tipped far enough to move: the view holds still and the tip only sets the speed
     if (!held && Math.abs(p.pitch) < TILT.YAW_LOCK && Math.abs(MOT.last.pitch) < TILT.YAW_LOCK) cam.yaw += d.dyaw * TILT.LOOK_GAIN;   // near straight up or down the compass heading is unstable, so it is ignored there
-    cam.pitch = Math.max(-TILT.PITCH_LIM, Math.min(TILT.PITCH_LIM, cam.pitch + (tiltLookPitch(p.pitch, MOT.neutral) - tiltLookPitch(MOT.last.pitch, MOT.neutral)) * TILT.LOOK_GAIN));
+    cam.pitch = Math.max(-TILT.PITCH_LIM, Math.min(TILT.PITCH_LIM, cam.pitch + (tiltLookPitch(p.pitch, MOT.neutral) - tiltLookPitch(MOT.last.pitch, MOT.neutral)) * TILT.LOOK_PITCH_GAIN));
   }
   MOT.last = p; MOT.roll = p.roll;
 }
