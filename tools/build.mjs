@@ -42,10 +42,9 @@ const MATOMO = `<!-- Matomo -->
 <script>
 (function () {
   var sites = { 'inferno.pollardjr.com': '3' };
-  var id = sites[location.hostname];
-  if (!id) return;
-  var dnt = navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.msDoNotTrack === '1';
-  if (dnt || navigator.globalPrivacyControl === true) return;
+  if (!Object.prototype.hasOwnProperty.call(sites, location.hostname)) return;
+  var dnt = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+  if (dnt === '1' || dnt === 'yes' || navigator.globalPrivacyControl === true) return;
   document.documentElement.classList.add('counted');
   var _paq = window._paq = window._paq || [];
   _paq.push(['disableCookies']);
@@ -54,7 +53,7 @@ const MATOMO = `<!-- Matomo -->
   _paq.push(['enableLinkTracking']);
   var u = 'https://stats.pollardjr.com/';
   _paq.push(['setTrackerUrl', u + 'matomo.php']);
-  _paq.push(['setSiteId', id]);
+  _paq.push(['setSiteId', sites[location.hostname]]);
   var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
   g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s);
 })();

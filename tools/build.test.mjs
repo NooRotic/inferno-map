@@ -79,7 +79,7 @@ test('the book edition counts visits on inferno.pollardjr.com only: no cookies, 
 
 test('counting does nothing on any other address, or for Do Not Track or Global Privacy Control', () => {
   const html = dist('index.html').toString();
-  for (const v of [{ hostname: 'inferno.nooroticx.tv' }, { hostname: 'localhost' }, { hostname: 'inferno.pollardjr.com', gpc: true }, { hostname: 'inferno.pollardjr.com', dnt: '1' }]) {
+  for (const v of [{ hostname: 'inferno.nooroticx.tv' }, { hostname: 'localhost' }, { hostname: 'constructor' }, { hostname: 'inferno.pollardjr.com', gpc: true }, { hostname: 'inferno.pollardjr.com', dnt: '1' }, { hostname: 'inferno.pollardjr.com', dnt: 'yes' }]) {
     const r = runCounter(html, v);
     assert.equal(r.paq, undefined, JSON.stringify(v));
     assert.deepEqual(r.scripts, [], JSON.stringify(v));
