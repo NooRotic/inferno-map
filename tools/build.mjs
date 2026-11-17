@@ -34,6 +34,33 @@ if (vendor) {
   body = body.replace(CDN, 'vendor/three.min.js');
 }
 
+// Visit counting for the poem edition only: Matomo on stats.pollardjr.com, site 3. The address list is the whole switch: the modern
+// edition (inferno.nooroticx.tv) and a local build are not in it, so there the block does nothing. A visitor who sends Do Not Track or
+// Global Privacy Control is not counted and no request is made. No cookies. It adds the class "counted" to <html>, which is what shows
+// the "what is counted" note in the intro (.counted-note). Tests: tools/build.test.mjs.
+const MATOMO = `<!-- Matomo -->
+<script>
+(function () {
+  var sites = { 'inferno.pollardjr.com': '3' };
+  var id = sites[location.hostname];
+  if (!id) return;
+  var dnt = navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.msDoNotTrack === '1';
+  if (dnt || navigator.globalPrivacyControl === true) return;
+  document.documentElement.classList.add('counted');
+  var _paq = window._paq = window._paq || [];
+  _paq.push(['disableCookies']);
+  _paq.push(['setDoNotTrack', true]);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  var u = 'https://stats.pollardjr.com/';
+  _paq.push(['setTrackerUrl', u + 'matomo.php']);
+  _paq.push(['setSiteId', id]);
+  var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+  g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s);
+})();
+</script>
+<!-- End Matomo -->`;
+
 const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -61,6 +88,7 @@ ${title}
 <meta name="twitter:description" content="${DESC}">
 <meta name="twitter:image" content="${SITE}og.png?v=1">
 <style>body{margin:0}</style>
+${MATOMO}
 </head>
 <body>
 ${body.trim()}

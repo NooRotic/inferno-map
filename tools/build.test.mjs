@@ -5,6 +5,7 @@ import { readFileSync, mkdtempSync, cpSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const build = (...args) => execFileSync(process.execPath, ['tools/build.mjs', ...args], { cwd: root, encoding: 'utf8' });
@@ -50,4 +51,46 @@ test('--data with a missing directory, no value, or no modern.json fails instead
   assert.match(buildFails(['--data', '--site', 'https://example.test/']) || '', /--data needs a directory/);
   const empty = mkdtempSync(join(tmpdir(), 'modern-empty-'));
   assert.match(buildFails(['--data', empty]) || '', /modern\.json not found/);
+});
+
+// Visit counting (Matomo on stats.pollardjr.com). It must count only the poem edition's own address, set no cookies, and stay
+// silent for a visitor who sends Do Not Track or Global Privacy Control. The page shows its "what is counted" note only when counting.
+const runCounter = (html, { hostname, gpc, dnt }) => {
+  const m = html.match(/<!-- Matomo -->\s*<script>([\s\S]*?)<\/script>\s*<!-- End Matomo -->/);
+  assert.ok(m, 'the Matomo block is in the page');
+  const inserted = [], classes = new Set(), win = {};
+  const first = { parentNode: { insertBefore: (el) => inserted.push(el) } };
+  const doc = { documentElement: { classList: { add: (c) => classes.add(c) } }, createElement: () => ({}), getElementsByTagName: () => [first] };
+  runInNewContext(m[1], { window: win, document: doc, location: { hostname }, navigator: { globalPrivacyControl: gpc, doNotTrack: dnt } });
+  return { paq: win._paq ? JSON.parse(JSON.stringify(win._paq)) : undefined, scripts: inserted.map((s) => s.src), counted: classes.has('counted') };
+};
+
+test('the book edition counts visits on inferno.pollardjr.com only: no cookies, site 3, tracker script from stats.pollardjr.com', () => {
+  build();
+  const r = runCounter(dist('index.html').toString(), { hostname: 'inferno.pollardjr.com' });
+  assert.ok(r.paq.some((c) => c[0] === 'disableCookies'));
+  assert.ok(r.paq.some((c) => c[0] === 'setDoNotTrack' && c[1] === true));
+  assert.deepEqual(r.paq.find((c) => c[0] === 'setSiteId'), ['setSiteId', '3']);
+  assert.deepEqual(r.paq.find((c) => c[0] === 'setTrackerUrl'), ['setTrackerUrl', 'https://stats.pollardjr.com/matomo.php']);
+  assert.ok(r.paq.some((c) => c[0] === 'trackPageView'));
+  assert.deepEqual(r.scripts, ['https://stats.pollardjr.com/matomo.js']);
+  assert.equal(r.counted, true);
+});
+
+test('counting does nothing on any other address, or for Do Not Track or Global Privacy Control', () => {
+  const html = dist('index.html').toString();
+  for (const v of [{ hostname: 'inferno.nooroticx.tv' }, { hostname: 'localhost' }, { hostname: 'inferno.pollardjr.com', gpc: true }, { hostname: 'inferno.pollardjr.com', dnt: '1' }]) {
+    const r = runCounter(html, v);
+    assert.equal(r.paq, undefined, JSON.stringify(v));
+    assert.deepEqual(r.scripts, [], JSON.stringify(v));
+    assert.equal(r.counted, false, JSON.stringify(v));
+  }
+});
+
+test('the intro carries one plain note about what is counted, shown only while counting', () => {
+  const html = dist('index.html').toString();
+  assert.match(html, /<p class="counted-note">Visits are counted by Matomo on my own server, with no cookies and shortened IP addresses\.<\/p>/);
+  assert.match(html, /\.counted-note\s*\{[^}]*display:\s*none/);
+  assert.match(html, /html\.counted\s+#incipit\s+p\.counted-note\s*\{[^}]*display:\s*block/);
+  assert.ok(!/—/.test(html.match(/<p class="counted-note">[^<]*<\/p>/)[0]), 'no em dash in the note');
 });
